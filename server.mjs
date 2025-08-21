@@ -2,11 +2,13 @@ import cookieParser from "cookie-parser";
 import express from 'express'
 // import {db} from "./db.js"
 import cors from 'cors'
-import bcrypt from 'bcryptjs';
+// import bcrypt from 'bcryptjs';
 import jwt from'jsonwebtoken';
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { userModel } from "./model.mjs";
+import router from "./api/auth.mjs";
+import router from "./api/message.mjs";
 
 
 const app = express();
@@ -26,133 +28,100 @@ app.use(cookieParser());
 
 const SECRET = process.env.SECRET_TOKEN
 
-app.post("/sign-up", async(req,res)=>{
 
-    let reqBody=req.body;
-    if(!reqBody.firstName|| !reqBody.lastName||!reqBody.email||!reqBody.password){
-        res.status(400).send({message:"require parameter missing"})
-        return;
-    }
-    reqBody.email = reqBody.email.toLowerCase();
-    // let query = `SELECT * FROM users WHERE email = $1`
-    // let value = [reqBody.email]
-    try {
-        const salt = bcrypt.genSaltSync(10);
-        const hash = bcrypt.hashSync(reqBody.password, salt);
-        const user = await userModel.findOne({email:reqBody.email})
-        // console.log("user", user)
-        if(!user){
+app.use('/api/v1/',router)
 
-
-     const result = await  userModel.create({
-            firstName:reqBody.firstName,
-          lastName:reqBody.lastName,
-         email:reqBody.email,
-         password:hash
-                })
-        res.status(201).send({message:"user created"})
-        }else{
-            res.status(400).send({message:"user already exist with this email"})
-        }
-
-       
-    } catch (error) {
-        console.log(error,"error");
-        res.status(500).send({message:"internal server error"})
-    }
-});
-
-
-
-app.post('/login' , async(req , res) => {
-    let reqBody = req.body;
-    if(!reqBody.email || !reqBody.password){
-      res.status(400).send({message: "Required Parameter Missing"})
-        return;
-    }
-    reqBody.email = reqBody.email.toLowerCase();
-  
-    try {
-     const user = await userModel.findOne({email:reqBody.email})
-      if(!user){
-        res.status(400).send({message:"user not found with this email"})
-        return;
+app.use('/api/v1/*splat',(req, res, next)=>{
+    if(!req?.cookies?.Token){
+        res.status(401).send({message:"unauthorized"})
+        return
       }
-        // let user = result.rows[0]
-        // console.log("Result" , result.rows);
-        let isMatched = await bcrypt.compare(reqBody.password, user.password); // true
-
-        if(!isMatched){
-          res.status(401).send({message: "Password did not Matched"});
-           return;
+      
+    jwt.verify(req.cookies.Token,SECRET,(err,decodedData)=>{
+        if(!err){
+            const nowDate = new Date().getTime() / 1000
+            if(decodedData.exp < nowDate){
+                res.status(401)
+                res.cookie('Token', '',{
+                  maxAge:1,
+                    httpOnly:true,
+                    secure:true
+                });
+                res.send({message:'token expired'})
+            }
+            else{
+                console.log("token approved")
+                req.body = {
+                    ...req.body,
+                    token:decodedData
+                }
+                next()
+            }
+        } else{
+            res.status({message:"invalid token"})
         }
+    })
+})
 
-        let token = jwt.sign({
-            id:user._id,
-            firstName: user.firstName,
-            last_name:user.lastName,
-            email: user.email,
-    
-            iat: Date.now() / 1000,
-            exp: (Date.now() / 1000) + (60*60*24)
-        }, SECRET);
 
-        res.cookie('Token', token, {
-            maxAge: 86400000, // 1 day
-            httpOnly: true,
-            secure: true
-        });
-        res.status(200)
-        res.send({message: "User Logged in" , user: {
-           id:user._id,
-            firstName: user.firstName,
-            last_name:user.lastName,
-            email: user.email,
-            // phone: result.rows[0].phone,
-            // user_role: result.rows[0].user_role,
-            // profile: result.rows[0].profile,
+app.get('/api/v1/users',async(req,res)=>{
+try {
+    let result = await userModel.find({},'firstName lastName email _Id');
+    console.log("result",result)
+    res.status(200).send({message:"user found"})
+} catch (error) {
+   console.log("Error", error)
+        res.status(500).send({message: "Internal Server Error"})
+}
+})
+
+app.get('/api/v1/profile', async(req , res) => {
+
+    let queryUserId;
+
+    if(req.query.user_id){
+
+        queryUserId = req.query.user_id
+
+    }else{
+
+        queryUserId = req.body.token.id
+
+    }
+
+    try {
+        let user = await userModel.findById(queryUserId, {password: 0});
+        res.send({message: "User Found" , user: {
+            user_id: user._id,
+            first_name: user.firstName,
+            last_name: user.lastName,
+            email: user.email
         }})
-        // res.status(200).send({message: "Testing" , result: result.rows, isMatched})
-
     } catch (error) {
         console.log("Error", error)
         res.status(500).send({message: "Internal Server Error"})
     }
 })
 
-// app.use('/*splat',(req, res, next)=>{
-//     if(!req?.cookies?.Token){
-//         res.status(401).send({message:"unauthorized"})
-//         return
-//       }
-      
-//     jwt.verify(req.cookies.Token,SECRET,(err,decodedData)=>{
-//         if(!err){
-//             const nowDate = new Date().getTime() / 1000
-//             if(decodedData.exp < nowDate){
-//                 res.status(401)
-//                 res.cookie('Token', '',{
-//                   maxAge:1,
-//                     httpOnly:true,
-//                     secure:true
-//                 });
-//                 res.send({message:'token expired'})
-//             }
-//             else{
-//                 console.log("token approved")
-//                 req.body = {
-//                     ...req.body,
-//                     token:decodedData
-//                 }
-//                 next()
-//             }
-//         } else{
-//             res.status({message:"invalid token"})
-//         }
-//     })
-// })
+app.get('/api/v1/users', async(req, res) => {
+    const userName = req.query.user
+    try {
+        let result
+        if(userName){
+           result = await userModel.find({$text: {$search: userName}}, {password: 0})
+        }else{
+            result = await userModel.find({}, {password: 0})
+        }
+        console.log("Result", result);
+        res.status(200).send({message: "user found", users: result})
+    } catch (error) {
+        console.log("Error", error)
+        res.status(500).send({message: "Internal Server Error"})
+    }
+})
 
 
+app.use('/api/v1/',router)
 app.listen(PORT, () => {
     console.log("Server is Running")
 })
