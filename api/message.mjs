@@ -5,7 +5,7 @@ import { messageModel } from '../model.mjs';
 const router = express.Router();
 
 
-app.post('/chat/:id',async(req,res)=>{
+router.post('/chat/:id',async(req,res)=>{
 let receiverId = req.params.id;
 let senderId = req.body.token.id;
 
@@ -15,11 +15,36 @@ try {
         to:receiverId,
         text:req.body.message
     })
-    res.send({message:"message send"})
+        let conversation = await messageModel.findById(result._id)
+    res.send({message:"message send", chat: conversation})
 } catch (error) {
     res.status(500).send({message:"internal server error"})
 }
 
 })
 
+  router.get('/conversation/:id', async(req, res) => {
+        let receiverId = req.params.id;
+        let senderId = req.body.token.id
+        try {
+            let conversation = await messageModel.find({
+                $or: [
+                    {
+                        from: receiverId,
+                        to: senderId
+                    },
+                    {
+                        from: senderId,
+                        to: receiverId,
+                    }
+                ]
+            })
+            // .populate({path: 'from', select: "firstName lastName email"})
+            // .populate({path: 'to', select: "firstName lastName email"})
+            // .exec();
+            res.send({message: "Message Found", conversation: conversation})
+        } catch (error) {
+            res.status(500).send({message: "Internal Server Error"})
+        }
+    })
 export default router

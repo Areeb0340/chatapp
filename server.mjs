@@ -7,8 +7,8 @@ import jwt from'jsonwebtoken';
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import { userModel } from "./model.mjs";
-import router from "./api/auth.mjs";
-import router from "./api/message.mjs";
+import authApi from './api/auth.mjs';
+import messageApi from './api/message.mjs';
 
 
 const app = express();
@@ -29,7 +29,7 @@ app.use(cookieParser());
 const SECRET = process.env.SECRET_TOKEN
 
 
-app.use('/api/v1/',router)
+app.use('/api/v1/',authApi)
 
 app.use('/api/v1/*splat',(req, res, next)=>{
     if(!req?.cookies?.Token){
@@ -64,16 +64,16 @@ app.use('/api/v1/*splat',(req, res, next)=>{
 })
 
 
-app.get('/api/v1/users',async(req,res)=>{
-try {
-    let result = await userModel.find({},'firstName lastName email _Id');
-    console.log("result",result)
-    res.status(200).send({message:"user found"})
-} catch (error) {
-   console.log("Error", error)
-        res.status(500).send({message: "Internal Server Error"})
-}
-})
+// app.get('/api/v1/users',async(req,res)=>{
+// try {
+//     let result = await userModel.find({},'firstName lastName email _Id');
+//     console.log("result",result)
+//     res.status(200).send({message:"user found"})
+// } catch (error) {
+//    console.log("Error", error)
+//         res.status(500).send({message: "Internal Server Error"})
+// }
+// })
 
 app.get('/api/v1/profile', async(req , res) => {
 
@@ -121,7 +121,8 @@ app.get('/api/v1/users', async(req, res) => {
 })
 
 
-app.use('/api/v1/',router)
+app.use('/api/v1/',messageApi)
+
 app.listen(PORT, () => {
     console.log("Server is Running")
 })

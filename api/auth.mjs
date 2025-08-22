@@ -3,8 +3,8 @@ import { userModel } from '../model.mjs';
 import bcrypt from 'bcryptjs';
 import jwt from'jsonwebtoken';
 import 'dotenv/config';
-const router = express.Router()
 const SECRET = process.env.SECRET_TOKEN
+const router = express.Router()
 
 router.post("/sign-up", async(req,res)=>{
 
