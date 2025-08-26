@@ -17,7 +17,9 @@ const messageSchema = new mongoose.Schema({
     to: { type: mongoose.ObjectId, ref: 'Users', required: true },
     text: {type: String, required: true},
     imageUrl: {type: String},
-    createdOn: { type: Date, default: Date.now }
+    createdOn: { type: Date, default: Date.now },
+     deletedBy: [{ type: mongoose.ObjectId, ref: 'Users' }], // jinhone apne liye delete kiya
+    isDeletedForEveryone: { type: Boolean, default: false } // sen
 });
 
 export const messageModel = mongoose.model('Messages', messageSchema);

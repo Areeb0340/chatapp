@@ -100,4 +100,15 @@ router.post('/login' , async(req , res) => {
     }
 })
 
+router.get('/logout', (req, res) => {
+    res.cookie('Token', '', {
+        maxAge: 1,
+        httpOnly: true,
+        // sameSite: "none",
+        secure: true
+    });
+    res.status(200).send({message: "User Logout"})
+})
+
+
 export default router

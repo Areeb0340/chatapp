@@ -9,6 +9,9 @@ import mongoose from 'mongoose';
 import { userModel } from "./model.mjs";
 import authApi from './api/auth.mjs';
 import messageApi from './api/message.mjs';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cookie from 'cookie'
 
 
 const app = express();
@@ -17,6 +20,8 @@ app.use(express.json());
 // app.use(bodyParser.json());
 
 
+const server = createServer(app);
+const io = new Server(server, { cors: { origin: "http://localhost:3000", credentials: true, methods: "*"} });
 mongoose.connect(process.env.MONGODBURL)
   .then(() => console.log('Connected!')).catch((error)=>console.log('err', error));
 
@@ -121,9 +126,46 @@ app.get('/api/v1/users', async(req, res) => {
 })
 
 
-app.use('/api/v1/',messageApi)
+// app.use('/api/v1/',messageApi)
 
-app.listen(PORT, () => {
+app.use('/api/v1', messageApi(io))
+
+io.on('connection', (socket) => {
+    // console.log('a user connected', socket.id);
+    console.log(socket?.handshake?.headers?.cookie);
+    let userCookie;
+    if(socket?.handshake?.headers?.cookie){
+        userCookie = cookie.parse(socket?.handshake?.headers?.cookie);
+        console.log(userCookie);
+    
+        if (!userCookie?.Token) {
+            socket.disconnect();
+        }
+    
+        jwt.verify(userCookie.Token, SECRET, (err, decodedData) => {
+            if (!err) {
+                const nowDate = new Date().getTime() / 1000;
+    
+                if (decodedData.exp < nowDate) {
+                    socket.disconnect()
+                } else {
+    
+                }
+            } else {
+                socket.disconnect()
+            }
+        });
+    }
+
+    socket.on("disconnect", (reason) => {
+        console.log("Client disconnected:", socket.id, "Reason:", reason);
+    });
+
+});
+
+
+
+server.listen(PORT, () => {
     console.log("Server is Running")
 })
 
@@ -140,3 +182,4 @@ mongoose.connection.on('error', function (err) {//any error
     console.log('Mongoose connection error: ', err);
     process.exit(1);
 });
+
