@@ -31,6 +31,8 @@ app.use(cors({
 }));
 app.use(cookieParser());
 
+app.use("/uploads", express.static("uploads"));
+
 const SECRET = process.env.SECRET_TOKEN
 
 

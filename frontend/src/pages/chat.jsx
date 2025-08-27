@@ -54,7 +54,7 @@ const Chat = ({ id }) => {
     };
   }, [id]);
 
-  // 🟢 Delete for Me
+
   const deleteMessageForMe = async (msgId) => {
     try {
       await api.delete(`/message/${msgId}/forme`, {
@@ -66,7 +66,7 @@ const Chat = ({ id }) => {
     }
   };
 
-  // 🟢 Delete for Everyone
+
   const deleteMessageForEveryone = async (msgId) => {
     try {
       await api.delete(`/message/${msgId}/foreveryone`, {
@@ -105,6 +105,9 @@ const Chat = ({ id }) => {
       </div>
     );
   }
+
+
+
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
