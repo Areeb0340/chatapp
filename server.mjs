@@ -31,6 +31,9 @@ app.use(cors({
 }));
 app.use(cookieParser());
 
+
+
+
 app.use("/uploads", express.static("uploads"));
 
 const SECRET = process.env.SECRET_TOKEN
@@ -52,7 +55,7 @@ app.use('/api/v1/*splat',(req, res, next)=>{
                 res.cookie('Token', '',{
                   maxAge:1,
                     httpOnly:true,
-                    secure:true
+                    secure:true,
                 });
                 res.send({message:'token expired'})
             }

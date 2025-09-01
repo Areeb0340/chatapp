@@ -5,23 +5,27 @@ const userSchema = new mongoose.Schema({
     lastName: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },
-    createdOn: { type: Date, default: Date.now }
+    createdOn: { type: Date, default: Date.now },
+      profilePic: { type: String, default: null } 
 });
 
-userSchema.index({firstName: 'text', lastName: 'text'});
+userSchema.index({ firstName: 'text', lastName: 'text' });
 
 export const userModel = mongoose.model('Users', userSchema);
 
 const messageSchema = new mongoose.Schema({
     from: { type: mongoose.ObjectId, ref: 'Users', required: true },
     to: { type: mongoose.ObjectId, ref: 'Users', required: true },
-    text: {type: String, required: true},
-    imageUrl: {type: String},
-      audioUrl: { type: String }, 
+
+    // ab text optional kar diya
+    text: { type: String, required: false },
+
+    imageUrl: { type: String },
+    voiceUrl: { type: String }, // voice message k liye
+
     createdOn: { type: Date, default: Date.now },
-     deletedBy: [{ type: mongoose.ObjectId, ref: 'Users' }], // jinhone apne liye delete kiya
-    isDeletedForEveryone: { type: Boolean, default: false } // sen
+    deletedBy: [{ type: mongoose.ObjectId, ref: 'Users' }], // jinhone apne liye delete kiya
+    isDeletedForEveryone: { type: Boolean, default: false } // sab ke liye delete
 });
 
 export const messageModel = mongoose.model('Messages', messageSchema);
-

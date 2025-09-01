@@ -1,9 +1,11 @@
-// Chat.jsx
 import React, { useContext, useEffect, useState } from "react";
 import api from "../component/api";
 import { GlobalContext } from "../Context/Context";
 import moment from "moment";
 import { io } from "socket.io-client";
+import { Send, Smile } from "lucide-react";
+import { AudioRecorder } from "react-audio-voice-recorder";
+import EmojiPicker from "emoji-picker-react";
 
 const Chat = ({ id }) => {
   let { state } = useContext(GlobalContext);
@@ -11,6 +13,8 @@ const Chat = ({ id }) => {
   const [conversations, setConversations] = useState([]);
   const [userDetail, setUserDetail] = useState({});
   const [menuOpen, setMenuOpen] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [voiceBlob, setVoiceBlob] = useState(null);
 
   const getConversation = async () => {
     try {
@@ -54,6 +58,14 @@ const Chat = ({ id }) => {
     };
   }, [id]);
 
+  // 🟢 close emoji picker jab bahar click ho
+  useEffect(() => {
+    const handleClick = () => setShowEmojiPicker(false);
+    if (showEmojiPicker) {
+      window.addEventListener("click", handleClick);
+    }
+    return () => window.removeEventListener("click", handleClick);
+  }, [showEmojiPicker]);
 
   const deleteMessageForMe = async (msgId) => {
     try {
@@ -65,7 +77,6 @@ const Chat = ({ id }) => {
       console.log("Delete for me error", error);
     }
   };
-
 
   const deleteMessageForEveryone = async (msgId) => {
     try {
@@ -89,12 +100,33 @@ const Chat = ({ id }) => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
+    if (!message.trim()) return;
+
     try {
       let res = await api.post(`chat/${id}`, { message });
       setMessage("");
       setConversations((prev) => [...prev, res.data.chat]);
     } catch (error) {
       console.log("Error", error);
+    }
+  };
+
+  const sendVoiceMessage = async () => {
+    if (!voiceBlob) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("voice", voiceBlob, "voice-message.webm");
+      formData.append("token[id]", state.user.user_id);
+
+      let res = await api.post(`/chat/${id}/voice`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setConversations((prev) => [...prev, res.data.chat]);
+      setVoiceBlob(null);
+    } catch (error) {
+      console.log("Voice send error", error);
     }
   };
 
@@ -106,11 +138,8 @@ const Chat = ({ id }) => {
     );
   }
 
-
-
-
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
+    <div className="flex flex-col h-screen bg-gray-900 text-white relative">
       {/* Header */}
       <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center">
         <div>
@@ -126,7 +155,10 @@ const Chat = ({ id }) => {
         {conversations?.map((eachMessage, i) => {
           const isMine = eachMessage?.from?._id === state.user.user_id;
           return (
-            <div key={i} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+            <div
+              key={i}
+              className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+            >
               <div className="relative">
                 <div
                   className={`max-w-xs md:max-w-md p-3 rounded-2xl ${
@@ -138,7 +170,21 @@ const Chat = ({ id }) => {
                   <p className="font-medium text-sm">
                     {eachMessage?.from?.firstName} {eachMessage?.from?.lastName}
                   </p>
-                  <p className="mt-1">{eachMessage?.text}</p>
+
+                  {/* Text */}
+                  {eachMessage?.text && (
+                    <p className="mt-1">{eachMessage?.text}</p>
+                  )}
+
+                  {/* Audio */}
+                  {eachMessage?.voiceUrl && (
+                    <audio
+                      controls
+                      className="mt-2 w-100"
+                      src={`${state.baseFileUrl}${eachMessage.voiceUrl}`}
+                    />
+                  )}
+
                   <span className="text-xs text-gray-300 block mt-1">
                     {moment(eachMessage?.createdOn).fromNow()}
                   </span>
@@ -148,7 +194,9 @@ const Chat = ({ id }) => {
                 <div className="absolute top-1 right-1">
                   <button
                     onClick={() =>
-                      setMenuOpen(menuOpen === eachMessage._id ? null : eachMessage._id)
+                      setMenuOpen(
+                        menuOpen === eachMessage._id ? null : eachMessage._id
+                      )
                     }
                     className="text-gray-300 hover:text-white"
                   >
@@ -156,7 +204,6 @@ const Chat = ({ id }) => {
                   </button>
                   {menuOpen === eachMessage._id && (
                     <div className="absolute right-0 mt-1 w-40 bg-gray-800 rounded-md shadow-lg z-10">
-                      {/* Delete for Me */}
                       <button
                         onClick={() => {
                           deleteMessageForMe(eachMessage._id);
@@ -167,7 +214,6 @@ const Chat = ({ id }) => {
                         Delete for Me
                       </button>
 
-                      {/* Delete for Everyone (only sender can see) */}
                       {isMine && (
                         <button
                           onClick={() => {
@@ -180,7 +226,6 @@ const Chat = ({ id }) => {
                         </button>
                       )}
 
-                      {/* Forward */}
                       <button
                         onClick={() => {
                           forwardMessage(eachMessage._id);
@@ -202,20 +247,80 @@ const Chat = ({ id }) => {
       {/* Input box */}
       <form
         onSubmit={sendMessage}
-        className="p-4 bg-gray-800 border-t border-gray-700 flex gap-2"
+        className="p-4 bg-gray-800 border-t border-gray-700 flex gap-2 items-center relative"
+        onClick={(e) => e.stopPropagation()} // form pe click se emoji band na ho
       >
+        {/* 🎤 Voice Recorder */}
+        {!voiceBlob ? (
+          <AudioRecorder
+            onRecordingComplete={(blob) => setVoiceBlob(blob)}
+            audioTrackConstraints={{
+              noiseSuppression: true,
+              echoCancellation: true,
+            }}
+            downloadOnSavePress={false}
+            downloadFileExtension="webm"
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <audio controls src={URL.createObjectURL(voiceBlob)} />
+            <button
+              type="button"
+              onClick={sendVoiceMessage}
+              className="p-2 bg-green-600 hover:bg-green-700 rounded-full"
+            >
+              <Send className="w-5 h-5 text-white" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setVoiceBlob(null)}
+              className="text-red-400 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write your message..."
           className="flex-1 resize-none rounded-lg p-2 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold"
+          className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center"
         >
-          Send
+          <Send className="w-5 h-5" />
         </button>
+
+        {/* 😀 Emoji Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation(); // button click pe close na ho
+            setShowEmojiPicker(!showEmojiPicker);
+          }}
+          className="p-2 text-gray-300 hover:text-white"
+        >
+          <Smile className="w-6 h-6" />
+        </button>
+
+        {/* Emoji Picker Box */}
+        {showEmojiPicker && (
+          <div
+            className="absolute bottom-16 right-4 bg-gray-800 rounded-lg shadow-lg z-50"
+            onClick={(e) => e.stopPropagation()} // picker pe click se close na ho
+          >
+            <EmojiPicker
+              onEmojiClick={(emojiData) =>
+                setMessage((prev) => prev + emojiData.emoji)
+              }
+              theme="dark"
+            />
+          </div>
+        )}
       </form>
     </div>
   );
