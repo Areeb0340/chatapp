@@ -50,7 +50,7 @@ router.post('/login', async(req,res) => {
     if(!isMatched) return res.status(401).send({message:"Password incorrect"});
     
     const token = jwt.sign({
-       user_id: user._id,
+      id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
@@ -62,13 +62,13 @@ router.post('/login', async(req,res) => {
     res.cookie('Token', token, {
       maxAge: 86400000,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax"
     });
     
     res.status(200).send({
       message:"User Logged in",
-      user: {  user_id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, profilePic: user.profilePic}
+      user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, profilePic: user.profilePic}
     });
   } catch(err) {
     console.log(err);
@@ -91,33 +91,32 @@ const storage = multer.diskStorage({
     cb(null, "uploads/profile");
   },
   filename: (req, file, cb) => {
-     let user_id = req.body._id || "guest"; // 👈 agar _id available ho
-    const ext = path.extname(file.originalname); // 👈 original extension (jpg/png/webp)
-    const uniqueName = `${user_id}_${Date.now()}${ext}`;
-    cb(null, uniqueName);
+    // Use userId from request body if available, else timestamp
+    const userId =  Date.now() + path.extname(file.originalname);
+    const filename = `${userId}${ext}`;
+    cb(null, userId);
   }
 });
-const upload = multer({ storage });
+export const upload = multer({ storage });
 // ---------------- UPLOAD PROFILE ----------------
 router.post("/upload-profile", upload.single("profilePic"), async (req, res) => {
   try {
     console.log("Upload request body:", req.body);
     console.log("Upload request file:", req.file);
-
     if (!req.file) {
       return res.status(400).send({ message: "No file uploaded" });
     }
 
-    const user_id = req.body.user_id;  // 👈 ab _id lena hai
-    if (!user_id) {
-      return res.status(400).send({ message: "User ID missing" });
+    const userId = req.body.id; // 👈 userId ki jagah email use karenge
+    if (!userId) {
+      return res.status(400).send({ message: "Email missing" });
     }
 
     const imageUrl = `/uploads/profile/${req.file.filename}`;
 
-    // _id ke basis pe user update karo
-    const user = await userModel.findByIdAndUpdate(
-      user_id,
+    // email ke basis pe user update karo
+    const user = await userModel.findOneAndUpdate(
+      { email: email.toLowerCase() },
       { profilePic: imageUrl },
       { new: true } // 👈 updated user return karega
     );
@@ -128,27 +127,25 @@ router.post("/upload-profile", upload.single("profilePic"), async (req, res) => 
 
     res.status(200).send({
       message: "Profile picture uploaded",
-      imageUrl:"",
-      profilePic: user.profilePic,
-      user_id: user._id, // 👈 frontend me consistent rahe
+      imageUrl:`/uploads/profile/${req.file.filename}`,
+      profilePic: user.profilePic, // 👈 frontend update ke liye
     });
   } catch (err) {
-    console.error("Upload error:", err);
+    console.error(err);
     res.status(500).send({ message: "Internal server error" });
   }
 });
 
 
 // ---------------- REMOVE PROFILE ----------------
-router.delete("/remove-profile", async (req, res) => {
+router.delete("/remove-profile", async (req,res) => {
   try {
-    const { user_id } = req.body; // 👈 ab _id lena hai
-    if (!user_id) return res.status(400).send({ message: "User ID missing" });
+    const { userId } = req.body;
+    if (!userId) return res.status(400).send({ message: "Email missing" });
 
-    const user = await userModel.findById(user_id);
-    if (!user || !user.profilePic) {
-      return res.status(400).send({ message: "No profile picture to remove" });
-    }
+    const user = await userModel.findOne({ email: email.toLowerCase() });
+    if (!user || !user.profilePic) 
+      return res.status(400).send({ message:"No profile picture to remove" });
 
     const filePath = path.join(process.cwd(), user.profilePic);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -156,13 +153,11 @@ router.delete("/remove-profile", async (req, res) => {
     user.profilePic = null;
     await user.save();
 
-    res.status(200).send({ 
-      message: "Profile picture removed",
-      _id: user._id 
-    });
-  } catch (err) {
-    console.error("Remove error:", err);
-    res.status(500).send({ message: "Internal server error" });
+    res.status(200).send({ message:"Profile picture removed" });
+  } catch(err) {
+    console.error(err);
+    res.status(500).send({message:"Internal server error"});
   }
 });
+
 export default router;

@@ -1,11 +1,9 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router";
-
-import api from "../component/api";
 import { GlobalContext } from "../Context/Context";
+import api from "../component/api";
 
 const Login = () => {
-  
   let { state, dispatch } = useContext(GlobalContext);
 
   const [email, setEmail] = useState("");
@@ -16,39 +14,42 @@ const Login = () => {
   const navigate = useNavigate();
 
   // 👇 Login function
-  const loginUser = async(e) => {
-        e.preventDefault();
-        try {
-            let res = await api.post(`/login`, {
-                email: email,
-                password: password
-            })
-            console.log(res.data);
-            alert(res.data.message);
-            dispatch({type: "USER_LOGIN", user: res.data.user})
-            setTimeout(() => {
-                navigate('/home')
-            } , 1000)
+  const loginUser = async (e) => {
+    e.preventDefault();
+    try {
+      let res = await api.post(`/login`, { email, password });
+      alert(res.data.message);
+    console.log("Logged in User:", res.data.user);
 
-        } catch (error) {
-            console.log("Error" , error);
-            alert(error.response.data.message)
-        }
-        
+      // Save user in global state
+      dispatch({ type: "USER_LOGIN", user: res.data.user });
+      console.log("user", res.data.user);
+
+      // Redirect to Home after 1 sec
+      setTimeout(() => {
+        navigate("/home");
+      }, 1000);
+      
+    } catch (error) {
+      console.log("Error", error);
+      alert(error?.response?.data?.message || "Login Failed");
     }
+  };
+
+
   const handleUpload = async () => {
   if (!profilePic) {
     alert("Select a file first!");
     return;
   }
-  
+  console.log("State.user in upload:", state.user);
 
   setUploading(true); // upload start hote hi true kar do
 
   try {
     const formData = new FormData();
-    formData.append("user_id", state.user._id);
     formData.append("profilePic", profilePic);
+    formData.append("userId", state.user.id);
 
 
     const res = await api.post("/upload-profile", formData, {
@@ -61,7 +62,7 @@ const Login = () => {
     // agar upload success hua
     dispatch({
       type: "USER_LOGIN",
-      user: { user: res.data.user, profilePic: res.data.profilePic },
+      user: { ...state.user, profilePic: res.data.imageUrl },
     });
 
     alert("Profile picture uploaded ✅");
@@ -133,7 +134,7 @@ const Login = () => {
             <h3 className="text-sm font-semibold mb-2 text-white">
               Upload Profile Picture
             </h3>
-             <input
+            <input
               type="file"
               accept="image/*"
               className="mb-2"
@@ -145,7 +146,7 @@ const Login = () => {
               className="w-full py-2 bg-green-600 rounded-md font-semibold hover:bg-green-500 transition"
             >
               {uploading ? "Uploading..." : "Upload"}
-            </button> 
+            </button>
           </div>
         )}
 

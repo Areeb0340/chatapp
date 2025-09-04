@@ -1,9 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
-
+import { GlobalContext } from "../Context/Context";
 import api from "../component/api";
 import Chat from "./chat";
 import { useNavigate } from "react-router"; // 👈 navigate ke liye
-import { GlobalContext } from "../Context/Context";
 
 const Home = () => {
   const [users, setUsers] = useState([]);
