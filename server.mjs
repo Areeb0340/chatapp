@@ -55,7 +55,8 @@ app.use('/api/v1/*splat',(req, res, next)=>{
                 res.cookie('Token', '',{
                   maxAge:1,
                     httpOnly:true,
-                    secure:true,
+                    secure:false,
+                       sameSite: "lax"
                 });
                 res.send({message:'token expired'})
             }
@@ -105,7 +106,9 @@ app.get('/api/v1/profile', async(req , res) => {
             user_id: user._id,
             first_name: user.firstName,
             last_name: user.lastName,
-            email: user.email
+            email: user.email,
+              profilePic: user.profilePic || null
+            
         }})
     } catch (error) {
         console.log("Error", error)

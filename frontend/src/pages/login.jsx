@@ -4,7 +4,7 @@ import { GlobalContext } from "../Context/Context";
 import api from "../component/api";
 
 const Login = () => {
-  let { state, dispatch } = useContext(GlobalContext);
+  const { state, dispatch } = useContext(GlobalContext);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,65 +17,58 @@ const Login = () => {
   const loginUser = async (e) => {
     e.preventDefault();
     try {
-      let res = await api.post(`/login`, { email, password });
+      const res = await api.post(`/login`, { email, password });
       alert(res.data.message);
-    console.log("Logged in User:", res.data.user);
 
       // Save user in global state
       dispatch({ type: "USER_LOGIN", user: res.data.user });
-      console.log("user", res.data.user);
 
       // Redirect to Home after 1 sec
       setTimeout(() => {
         navigate("/home");
       }, 1000);
-      
     } catch (error) {
       console.log("Error", error);
       alert(error?.response?.data?.message || "Login Failed");
     }
   };
 
-
+  // 👇 Upload Profile Picture to Cloudinary
   const handleUpload = async () => {
-  if (!profilePic) {
-    alert("Select a file first!");
-    return;
-  }
-  console.log("State.user in upload:", state.user);
+    if (!profilePic) {
+      alert("Select a file first!");
+      return;
+    }
 
-  setUploading(true); // upload start hote hi true kar do
+    setUploading(true);
 
-  try {
-    const formData = new FormData();
-    formData.append("profilePic", profilePic);
-    formData.append("userId", state.user.id);
+    try {
+      const formData = new FormData();
+      formData.append("profilePic", profilePic);
 
+      // Cloudinary upload route
+      const res = await api.post("/upload-profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      
+      });
 
-    const res = await api.post("/upload-profile", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      withCredentials: true,
-    });
+      // Update user in global state
+      dispatch({
+        type: "USER_LOGIN",
+        user: { ...state.user, profilePic: res.data.profilePic },
+      });
 
-    // agar upload success hua
-    dispatch({
-      type: "USER_LOGIN",
-      user: { ...state.user, profilePic: res.data.imageUrl },
-    });
+      alert("Profile picture uploaded ✅");
+      setProfilePic(null);
+    } catch (err) {
+      console.error("Upload Error:", err.response ? err.response.data : err);
+      alert("Failed to upload profile picture ❌");
+    }
 
-    alert("Profile picture uploaded ✅");
-    setProfilePic(null);
-  } catch (err) {
-    // agar error aaya
-    console.error("Upload Error:", err.response ? err.response.data : err);
-    alert("Failed to upload profile picture ❌");
-  }
-
-  // try/catch ke baad hamesha loading ko false kar do
-  setUploading(false);
-};
+    setUploading(false);
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
@@ -117,15 +110,10 @@ const Login = () => {
         {/* 👇 Profile Upload Section (after login) */}
         {state.user && (
           <div className="mt-6 border-t border-gray-600 pt-4">
-
             {/* Profile Picture Preview */}
             <div className="flex justify-center mb-4">
               <img
-                src={
-                  state.user?.profilePic
-                    ? `http://localhost:5000${state.user.profilePic}`
-                    : "/default-avatar.png"
-                }
+                src={state.user?.profilePic || "/default-avatar.png"}
                 alt="Profile"
                 className="w-20 h-20 rounded-full border border-gray-600 object-cover"
               />
