@@ -1,11 +1,12 @@
 import React, { useContext, useEffect, useState } from "react";
 import api from "../component/api";
-import { GlobalContext } from "../Context/Context";
+
 import moment from "moment";
 import { io } from "socket.io-client";
 import { Send, Smile } from "lucide-react";
 import { AudioRecorder } from "react-audio-voice-recorder";
 import EmojiPicker from "emoji-picker-react";
+import { GlobalContext } from "../Context/Context";
 
 const Chat = ({ id }) => {
   let { state } = useContext(GlobalContext);

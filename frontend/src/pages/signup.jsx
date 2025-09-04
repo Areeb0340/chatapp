@@ -1,7 +1,8 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { GlobalContext } from "../Context/Context";
+
 import api from "../component/api";
+import { GlobalContext } from "../Context/Context";
 
 const Signup = () => {
   let { state } = useContext(GlobalContext);

@@ -31,15 +31,15 @@ app.use(cors({
 }));
 app.use(cookieParser());
 
-
-
-
-app.use("/uploads", express.static("uploads"));
-
 const SECRET = process.env.SECRET_TOKEN
 
 
+
+
 app.use('/api/v1/',authApi)
+app.use("/uploads", express.static("uploads"));
+
+
 
 app.use('/api/v1/*splat',(req, res, next)=>{
     if(!req?.cookies?.Token){
