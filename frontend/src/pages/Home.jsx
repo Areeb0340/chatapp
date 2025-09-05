@@ -30,6 +30,10 @@ const Home = () => {
     getUsers();
   }, []);
 
+   useEffect(() => {
+    console.log("User state updated:", state.user);
+  }, [state.user]);
+
   const searchUser = (e) => {
     e.preventDefault();
     setIsLoading(true);

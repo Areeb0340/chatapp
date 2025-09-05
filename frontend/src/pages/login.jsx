@@ -17,13 +17,18 @@ const Login = () => {
   const loginUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post(`/login`, { email, password });
-      alert(res.data.message);
-
-      // Save user in global state
+      const res = await api.post(
+        `/login`,
+        { email, password },
+      
+      );
+      // ✅ Save user in global state
       dispatch({ type: "USER_LOGIN", user: res.data.user });
+      
+      alert(res.data.message);
+      console.log('state',state.user_id)
 
-      // Redirect to Home after 1 sec
+      // ✅ Sidha home page pe redirect
       setTimeout(() => {
         navigate("/home");
       }, 1000);
@@ -33,38 +38,52 @@ const Login = () => {
     }
   };
 
-  // 👇 Upload Profile Picture to Cloudinary
+  // 👇 Upload Profile Picture (Cloudinary)
   const handleUpload = async () => {
     if (!profilePic) {
       alert("Select a file first!");
       return;
     }
-
     setUploading(true);
 
+    const formData = new FormData();
+    formData.append("file", profilePic);
+    formData.append("upload_preset", "myuploads"); // 👈 Cloudinary preset
+    formData.append("folder", "profile_pics");
+
     try {
-      const formData = new FormData();
-      formData.append("profilePic", profilePic);
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/dkynrkofa/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      // Cloudinary upload route
-      const res = await api.post("/upload-profile", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      
-      });
+      const data = await res.json();
+      console.log("Cloudinary Upload:", data);
+ 
+      // ✅ Backend ko bhi update kar do (user ke profile me save ho jaye)
+      await api.post(
+        "/upload-profile",
+        { profilePic: data.secure_url,
+          userId: state.id,
+         },
+        { withCredentials: true }
+      );
 
-      // Update user in global state
+      // ✅ Global state update
       dispatch({
         type: "USER_LOGIN",
-        user: { ...state.user, profilePic: res.data.profilePic },
+        user: { ...state.user, profilePic: data.secure_url },
       });
+      
 
       alert("Profile picture uploaded ✅");
       setProfilePic(null);
     } catch (err) {
-      console.error("Upload Error:", err.response ? err.response.data : err);
-      alert("Failed to upload profile picture ❌");
+      console.error("Cloudinary Error:", err);
+      alert("Upload failed ❌");
     }
 
     setUploading(false);
@@ -87,6 +106,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-500 border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="Enter your email"
+              required
             />
           </div>
           <div>
@@ -97,6 +117,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-500 border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="Enter your password"
+              required
             />
           </div>
           <button
@@ -107,10 +128,9 @@ const Login = () => {
           </button>
         </form>
 
-        {/* 👇 Profile Upload Section (after login) */}
+        {/* 👇 Profile Upload Section (only after login) */}
         {state.user && (
           <div className="mt-6 border-t border-gray-600 pt-4">
-            {/* Profile Picture Preview */}
             <div className="flex justify-center mb-4">
               <img
                 src={state.user?.profilePic || "/default-avatar.png"}

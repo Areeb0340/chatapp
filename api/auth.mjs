@@ -1,125 +1,81 @@
-// auth.mjs
 import express from 'express';
 import { userModel } from '../model.mjs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
-import { upload } from "./multerCloudinary.mjs";
-import cloudinary from "./cloudinaryConfig.mjs";
 
 const SECRET = process.env.SECRET_TOKEN;
 const router = express.Router();
 
-// ---------------- JWT Middleware ----------------
-const verifyToken = async (req, res, next) => {
-  try {
-    const token = req.cookies?.Token;
-    if (!token) return res.status(401).send({ message: "Unauthorized" });
-
-    const decoded = jwt.verify(token, SECRET);
-    const user = await userModel.findById(decoded.id);
-    if (!user) return res.status(404).send({ message: "User not found" });
-
-    req.user = user; // ✅ attach user for multerCloudinary
-    next();
-  } catch (err) {
-    console.error(err);
-    res.status(401).send({ message: "Unauthorized" });
-  }
-};
 
 // ---------------- SIGN-UP ----------------
-router.post("/sign-up", async (req,res) => {
+router.post("/sign-up", async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
-  if(!firstName || !lastName || !email || !password){
-    return res.status(400).send({message:"Required parameter missing"});
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).send({ message: "Required parameter missing" });
   }
 
   try {
     const hash = bcrypt.hashSync(password, 10);
     const existingUser = await userModel.findOne({ email: email.toLowerCase() });
-    if(existingUser) return res.status(400).send({message:"User already exists"});
-    
+    if (existingUser) return res.status(400).send({ message: "User already exists" });
+
     await userModel.create({
-      firstName, lastName,
+      firstName,
+      lastName,
       email: email.toLowerCase(),
-      password: hash
+      password: hash,
     });
-    res.status(201).send({message:"User created"});
+
+    res.status(201).send({ message: "User created" });
   } catch (err) {
     console.error(err);
-    res.status(500).send({message:"Internal server error"});
+    res.status(500).send({ message: "Internal server error" });
   }
 });
 
 // ---------------- LOGIN ----------------
-router.post('/login', async(req,res) => {
+router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  if(!email || !password) return res.status(400).send({message:"Required parameter missing"});
-  
-  try {
-    const user = await userModel.findOne({email: email.toLowerCase()});
-    if(!user) return res.status(400).send({message:"User not found"});
-    
-    const isMatched = await bcrypt.compare(password, user.password);
-    if(!isMatched) return res.status(401).send({message:"Password incorrect"});
-    
-    const token = jwt.sign({
-      id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      profilePic: user.profilePic,
-      iat: Math.floor(Date.now()/1000),
-      exp: Math.floor(Date.now()/1000) + (60*60*24) // 24h
-    }, SECRET);
+  if (!email || !password)
+    return res.status(400).send({ message: "Required parameter missing" });
 
-    res.cookie('Token', token, {
+  try {
+    const user = await userModel.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(400).send({ message: "User not found" });
+
+    const isMatched = await bcrypt.compare(password, user.password);
+    if (!isMatched) return res.status(401).send({ message: "Password incorrect" });
+
+    const token = jwt.sign(
+      {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        profilePic: user.profilePic,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 24h
+      },
+      SECRET
+    );
+
+    res.cookie("Token", token, {
       maxAge: 86400000,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax"
+      sameSite: "lax",
     });
 
     res.status(200).send({
-      message:"User Logged in",
-      user: { 
-        id: user._id, 
-        firstName: user.firstName, 
-        lastName: user.lastName, 
-        email: user.email, 
-        profilePic: user.profilePic 
-      }
-    });
-  } catch(err) {
-    console.error(err);
-    res.status(500).send({message:"Internal server error"});
-  }
-});
-
-// ---------------- LOGOUT ----------------
-router.get('/logout', (req, res) => {
-  res.cookie('Token', '', {
-      maxAge: 1,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax"
-    });
-  res.status(200).send({message: "User Logout"})
-});
-
-// ---------------- UPLOAD PROFILE ----------------
-router.post("/upload-profile", verifyToken, upload.single("profilePic"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).send({ message: "No file uploaded" });
-
-    // Cloudinary path
-    req.user.profilePic = req.file.path;
-    await req.user.save();
-
-    res.status(200).send({
-      message: "Profile picture uploaded",
-      profilePic: req.user.profilePic
+      message: "User Logged in",
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        profilePic: user.profilePic,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -127,22 +83,43 @@ router.post("/upload-profile", verifyToken, upload.single("profilePic"), async (
   }
 });
 
-// ---------------- REMOVE PROFILE ----------------
-router.delete("/remove-profile", verifyToken, async(req,res) => {
-  try {
-    if(!req.user.profilePic) return res.status(400).send({message:"No profile picture to remove"});
-
-    const publicId = `profile_pics/${req.user._id}`;
-    await cloudinary.uploader.destroy(publicId);
-
-    req.user.profilePic = null;
-    await req.user.save();
-
-    res.status(200).send({message:"Profile picture removed"});
-  } catch(err){
-    console.error(err);
-    res.status(500).send({message:"Internal server error"});
-  }
+// ---------------- LOGOUT ----------------
+router.get("/logout", (req, res) => {
+  res.cookie("Token", "", {
+    maxAge: 1,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+  res.status(200).send({ message: "User Logout" });
 });
 
+
+// ---------------- UPLOAD PROFILE ----------------
+router.post("/upload-profile", async (req, res) => {
+  try {
+    const { userId, profilePic } = req.body;
+
+    if (!userId || !profilePic) {
+      return res.status(400).send({ message: "userId and profilePic required" });
+    }
+
+    // Update user in DB
+    const user = await userModel.findByIdAndUpdate(
+      userId,
+      { profilePic },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).send({ message: "User not found" });
+
+    res.status(200).send({
+      message: "Profile picture updated ✅",
+      user,
+    });
+  } catch (err) {
+    console.error("Upload profile error:", err.message);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
 export default router;

@@ -107,7 +107,7 @@ app.get('/api/v1/profile', async(req , res) => {
             first_name: user.firstName,
             last_name: user.lastName,
             email: user.email,
-              profilePic: user.profilePic || null
+            profilePic: user.profilePic || null
             
         }})
     } catch (error) {
