@@ -1,5 +1,5 @@
 import express from "express";
-import { messageModel } from "../model.mjs";
+import { messageModel,groupModel,groupMessageModel} from "../model.mjs";
 import multer from "multer";
 // import path from "path";
 // import multer from "multer";
@@ -175,6 +175,139 @@ router.post("/chat/:id/voice", upload.single("voice"), async (req, res) => {
     res.status(500).send({ message: "Internal Server Error" });
   }
 });
+
+
+
+router.post("/group/create", async (req, res) => {
+    try {
+      const { groupName, members, adminId } = req.body;
+      if (!groupName || !members || !adminId) {
+        return res.status(400).json({ message: "Missing parameters" });
+      }
+
+      const group = await groupModel.create({
+        groupName,
+        members,
+        admin: adminId,
+        isGroup: true,
+      });
+
+      res.status(201).json({ message: "Group created ✅", group });
+    } catch (err) {
+      console.error("Group create error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ------------------ Get Groups for a User ------------------
+  router.get("/groups/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const groups = await groupModel
+        .find({ members: userId })
+        .populate("members", "firstName lastName profilePic")
+        .populate("admin", "firstName lastName profilePic")
+        .exec();
+      res.json({ message: "Groups fetched ✅", groups });
+    } catch (err) {
+      console.error("Get groups error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ------------------ Send Group Message ------------------
+  router.post("/group/:groupId/message", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { from, text } = req.body;
+
+      if (!groupId || !from) return res.status(400).json({ message: "Missing params" });
+
+      const msg = await groupMessageModel.create({
+        from,
+        group: groupId,
+        text,
+      });
+
+      const populatedMsg = await groupMessageModel
+        .findById(msg._id)
+        .populate("from", "firstName lastName profilePic")
+        .populate("group", "groupName members admin")
+        .exec();
+
+      // Socket: emit to all group members
+      const group = await groupModel.findById(groupId);
+      group.members.forEach((memberId) => {
+        io.emit(`group-${groupId}-${memberId}`, populatedMsg);
+      });
+
+      res.json({ message: "Message sent ✅", chat: populatedMsg });
+    } catch (err) {
+      console.error("Send group message error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ------------------ Get Group Messages ------------------
+  router.get("/group/:groupId/messages", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+
+      const messages = await groupMessageModel
+        .find({ group: groupId })
+        .populate("from", "firstName lastName profilePic")
+        .populate("group", "groupName")
+        .exec();
+
+      res.json({ message: "Messages fetched ✅", messages });
+    } catch (err) {
+      console.error("Get group messages error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ------------------ Delete Group Message ------------------
+  router.delete("/group/message/:id/forme", async (req, res) => {
+    try {
+      const msgId = req.params.id;
+      const userId = req.body.token.id;
+
+      const msg = await groupMessageModel.findById(msgId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+
+      if (!msg.deletedBy.includes(userId)) {
+        msg.deletedBy.push(userId);
+        await msg.save();
+      }
+
+      res.json({ message: "Deleted for you ✅" });
+    } catch (err) {
+      console.error("Delete group message error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  router.delete("/group/message/:id/foreveryone", async (req, res) => {
+    try {
+      const msgId = req.params.id;
+      const userId = req.body.token.id;
+
+      const msg = await groupMessageModel.findById(msgId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+
+      if (msg.from.toString() !== userId.toString()) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      msg.isDeletedForEveryone = true;
+      await msg.save();
+
+      res.json({ message: "Deleted for everyone ✅" });
+    } catch (err) {
+      console.error("Delete group message everyone error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
   return router;
 
 }

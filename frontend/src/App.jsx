@@ -1,17 +1,14 @@
-import logo from './logo.svg';
-// import './index.css'
 import './App.css';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router';
 import Signup from './pages/signup';
 import Login from './pages/login';
 import Home from './pages/Home';
 import { useContext, useEffect, useState } from 'react';
-
 import api from './component/api';
 import Chat from './pages/chat';
+import { GlobalContext } from './Context/Context';
 import io from 'socket.io-client';
 import moment from 'moment';
-import { GlobalContext } from './Context/Context';
 
 function App() {
   let {state, dispatch} = useContext(GlobalContext);

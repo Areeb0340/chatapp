@@ -63,14 +63,15 @@ router.post("/login", async (req, res) => {
     res.cookie("Token", token, {
       maxAge: 86400000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+ 
     });
+    console.log("Token cookie set", token);
 
     res.status(200).send({
       message: "User Logged in",
       user: {
-        id: user._id,
+        user_id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -88,8 +89,8 @@ router.get("/logout", (req, res) => {
   res.cookie("Token", "", {
     maxAge: 1,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: false,
+    sameSite: "none",
   });
   res.status(200).send({ message: "User Logout" });
 });
@@ -98,15 +99,17 @@ router.get("/logout", (req, res) => {
 // ---------------- UPLOAD PROFILE ----------------
 router.post("/upload-profile", async (req, res) => {
   try {
-    const { userId, profilePic } = req.body;
+     console.log("Upload-profile route hit ✅", req.body);
+     const user_id = req.body.user_id;
+    const profilePic = req.body.profilePic;
 
-    if (!userId || !profilePic) {
+    if ( !profilePic||!user_id) {
       return res.status(400).send({ message: "userId and profilePic required" });
     }
 
     // Update user in DB
     const user = await userModel.findByIdAndUpdate(
-      userId,
+      user_id,
       { profilePic },
       { new: true }
     );
@@ -122,4 +125,38 @@ router.post("/upload-profile", async (req, res) => {
     res.status(500).send({ message: "Internal server error" });
   }
 });
+
+
+router.post("/remove-profile", async (req, res) => {
+  try {
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res.status(400).send({ message: "User ID required" });
+    }
+
+    // Reset profilePic to null or default avatar
+    const user = await userModel.findByIdAndUpdate(
+      user_id,
+      { profilePic: null }, // 👈 ya phir "default-avatar.png"
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    res.status(200).send({
+      message: "Profile picture removed ✅",
+      user,
+    });
+  } catch (err) {
+    console.error("Remove profile error:", err.message);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+
+
+
 export default router;

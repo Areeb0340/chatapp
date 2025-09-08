@@ -140,15 +140,20 @@ const Chat = ({ id }) => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white relative">
-      {/* Header */}
-      <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center">
-        <div>
-          <h1 className="text-lg font-semibold">
-            {userDetail?.first_name} {userDetail?.last_name}
-          </h1>
-          <p className="text-sm text-gray-400">{userDetail?.email}</p>
-        </div>
-      </div>
+      <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+  {/* Profile Picture */}
+  <img
+    src={userDetail?.profilePic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"}
+    alt="Profile"
+    className="w-10 h-10 rounded-full object-cover border border-gray-600"
+  />
+
+  {/* User Full Name */}
+  <h1 className="text-lg font-semibold">
+    {userDetail?.firstName || userDetail?.first_name}{" "}
+    {userDetail?.lastName || userDetail?.last_name}
+  </h1>
+</div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">

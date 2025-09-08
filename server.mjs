@@ -16,7 +16,6 @@ import cookie from 'cookie'
 
 const app = express();
 const PORT = 5005;
-app.use(express.json());
 // app.use(bodyParser.json());
 
 
@@ -25,13 +24,14 @@ const io = new Server(server, { cors: { origin: "http://localhost:3000", credent
 mongoose.connect(process.env.MONGODBURL)
   .then(() => console.log('Connected!')).catch((error)=>console.log('err', error));
 
+  const SECRET = process.env.SECRET_TOKEN
 app.use(cors({
-  origin: "http://localhost:3000", // frontend origin
+  origin: ['http://localhost:3000'], // frontend origin
   credentials: true
 }));
+app.use(express.json());
 app.use(cookieParser());
 
-const SECRET = process.env.SECRET_TOKEN
 
 
 
@@ -41,7 +41,7 @@ app.use("/uploads", express.static("uploads"));
 
 
 
-app.use('/api/v1/*splat',(req, res, next)=>{
+app.use('/api/v1/*splat',async(req, res, next)=>{
     if(!req?.cookies?.Token){
         res.status(401).send({message:"unauthorized"})
         return
@@ -56,9 +56,10 @@ app.use('/api/v1/*splat',(req, res, next)=>{
                   maxAge:1,
                     httpOnly:true,
                     secure:false,
-                       sameSite: "lax"
+                     
                 });
                 res.send({message:'token expired'})
+
             }
             else{
                 console.log("token approved")
@@ -66,6 +67,7 @@ app.use('/api/v1/*splat',(req, res, next)=>{
                     ...req.body,
                     token:decodedData
                 }
+              
                 next()
             }
         } else{
@@ -86,35 +88,37 @@ app.use('/api/v1/*splat',(req, res, next)=>{
 // }
 // })
 
-app.get('/api/v1/profile', async(req , res) => {
+app.get('/api/v1/profile', async (req, res) => {
+  let queryUserId;
 
-    let queryUserId;
+  if (req.query.user_id) {
+    queryUserId = req.query.user_id;
+  } else {
+    queryUserId = req.body.token.id;  // yaha fix kiya
+  }
 
-    if(req.query.user_id){
-
-        queryUserId = req.query.user_id
-
-    }else{
-
-        queryUserId = req.body.token.id
-
+  try {
+    let user = await userModel.findById(queryUserId, { password: 0 });
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
     }
 
-    try {
-        let user = await userModel.findById(queryUserId, {password: 0});
-        res.send({message: "User Found" , user: {
-            user_id: user._id,
-            first_name: user.firstName,
-            last_name: user.lastName,
-            email: user.email,
-            profilePic: user.profilePic || null
-            
-        }})
-    } catch (error) {
-        console.log("Error", error)
-        res.status(500).send({message: "Internal Server Error"})
-    }
-})
+    res.send({
+      message: "User Found",
+      user: {
+        user_id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        profilePic: user.profilePic || null,
+      }
+    });
+  } catch (error) {
+    console.log("Error", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
 
 app.get('/api/v1/users', async(req, res) => {
     const userName = req.query.user
