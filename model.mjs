@@ -41,6 +41,7 @@ const groupSchema = new mongoose.Schema({
   admin: { type: mongoose.Schema.Types.ObjectId, ref: 'Users', required: true },
   isGroup: { type: Boolean, default: true },
   createdOn: { type: Date, default: Date.now },
+   groupPic: { type: String, default: "/default-group.png" },
 });
 
 // Group Messages

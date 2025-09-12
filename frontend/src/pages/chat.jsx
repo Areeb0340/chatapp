@@ -7,7 +7,7 @@ import { Send, Smile } from "lucide-react";
 import { AudioRecorder } from "react-audio-voice-recorder";
 import EmojiPicker from "emoji-picker-react";
 
-const Chat = ({ id }) => {
+const Chat = ({ id , groups, selectedGroup }) => {
   let { state } = useContext(GlobalContext);
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
@@ -15,6 +15,7 @@ const Chat = ({ id }) => {
   const [menuOpen, setMenuOpen] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [voiceBlob, setVoiceBlob] = useState(null);
+  const [isGroup, setIsGroup] = useState(false);
 
   const getConversation = async () => {
     try {
@@ -25,6 +26,16 @@ const Chat = ({ id }) => {
     }
   };
 
+const getGroupDetail = async () => {
+  try {
+    let response = await api.get(`/group/${id}`);
+     console.log("Group Detail Response:", response.data); // 
+    setUserDetail(response.data?.group);  // same state use kar sakte ho
+  } catch (error) {
+    console.log("Group detail error", error);
+  }
+};
+
   const getUserDetail = async () => {
     try {
       let response = await api.get(`/profile?user_id=${id}`);
@@ -34,12 +45,25 @@ const Chat = ({ id }) => {
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      getConversation();
-      getUserDetail();
-    }
-  }, [id]);
+useEffect(() => {
+  if (!id) return;
+
+  const grp = groups?.find((g) => g._id === id);
+  setIsGroup(!!grp);
+
+  if (grp) {
+    // Group case
+    getGroupDetail();
+    api.get(`/group/${id}/messages`).then((res) => {
+      setConversations(res.data.messages);
+    });
+  } else {
+    // Personal case
+    getUserDetail();
+    getConversation();
+  }
+}, [id, groups]);
+  
 
   useEffect(() => {
     if (!id) return;
@@ -50,13 +74,41 @@ const Chat = ({ id }) => {
     });
 
     socket.on(`${id}-${state.user.user_id}`, (data) => {
-      setConversations((prev) => [...prev, data]);
-    });
-
+  if (data.from._id !== state.user.user_id) {  // apna message ignore karo
+    setConversations((prev) => [...prev, data]);
+  }
+});
+    // group chat
+ socket.on(`group-${id}-${state.user.user_id}`, (data) => {
+  if (data.from !== state.user.user_id) { // agar server group message me 'from' sirf id bhejta hai
+    setConversations((prev) => [...prev, data]);
+  }
+});
     return () => {
       socket.close();
     };
   }, [id]);
+
+
+
+
+useEffect(() => {
+    if (!id || !groups) return;
+
+    const grp = groups.find((g) => g._id === id);
+    setIsGroup(!!grp);
+
+    if (grp) {
+      // Group messages fetch
+      api.get(`/group/${id}/messages`).then((res) => {
+        setConversations(res.data.messages);
+      });
+    } else {
+      // Personal messages fetch
+      getConversation();
+      getUserDetail();
+    }
+  }, [id, groups]);
 
   // 🟢 close emoji picker jab bahar click ho
   useEffect(() => {
@@ -67,27 +119,37 @@ const Chat = ({ id }) => {
     return () => window.removeEventListener("click", handleClick);
   }, [showEmojiPicker]);
 
-  const deleteMessageForMe = async (msgId) => {
-    try {
-      await api.delete(`/message/${msgId}/forme`, {
-        data: { token: { id: state.user.user_id } },
-      });
-      setConversations((prev) => prev.filter((m) => m._id !== msgId));
-    } catch (error) {
-      console.log("Delete for me error", error);
-    }
-  };
+ const deleteMessageForMe = async (msgId) => {
+  try {
+    const url = isGroup
+      ? `/group/message/${msgId}/forme`
+      : `/message/${msgId}/forme`;
 
-  const deleteMessageForEveryone = async (msgId) => {
-    try {
-      await api.delete(`/message/${msgId}/foreveryone`, {
-        data: { token: { id: state.user.user_id } },
-      });
-      setConversations((prev) => prev.filter((m) => m._id !== msgId));
-    } catch (error) {
-      console.log("Delete for everyone error", error);
-    }
-  };
+    await api.delete(url, {
+      data: { token: { id: state.user.user_id } },
+    });
+
+    setConversations((prev) => prev.filter((m) => m._id !== msgId));
+  } catch (error) {
+    console.log("Delete for me error", error);
+  }
+};
+
+const deleteMessageForEveryone = async (msgId) => {
+  try {
+    const url = isGroup
+      ? `/group/message/${msgId}/foreveryone`
+      : `/message/${msgId}/foreveryone`;
+
+    await api.delete(url, {
+      data: { token: { id: state.user.user_id } },
+    });
+
+    setConversations((prev) => prev.filter((m) => m._id !== msgId));
+  } catch (error) {
+    console.log("Delete for everyone error", error);
+  }
+};
 
   const forwardMessage = async (msgId) => {
     try {
@@ -98,37 +160,53 @@ const Chat = ({ id }) => {
     }
   };
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!message.trim()) return;
+ const sendMessage = async (e) => {
+  e.preventDefault();
+  if (!message.trim()) return;
 
-    try {
-      let res = await api.post(`chat/${id}`, { message });
-      setMessage("");
-      setConversations((prev) => [...prev, res.data.chat]);
-    } catch (error) {
-      console.log("Error", error);
+  try {
+    let res;
+    if (isGroup) {
+      res = await api.post(`/group/${id}/message`, {
+        from: state.user.user_id,
+        text: message,
+      });
+    } else {
+      res = await api.post(`/chat/${id}`, { message });
+           setConversations((prev) => [...prev, res.data.chat]);
     }
-  };
+    setMessage("");
+    // setConversations((prev) => [...prev, res.data.chat]);
+  } catch (error) {
+    console.log("Error", error);
+  }
+};
 
-  const sendVoiceMessage = async () => {
-    if (!voiceBlob) return;
+const sendVoiceMessage = async () => {
+  if (!voiceBlob) return;
 
-    try {
-      const formData = new FormData();
-      formData.append("voice", voiceBlob, "voice-message.webm");
-      formData.append("token[id]", state.user.user_id);
+  try {
+    const formData = new FormData();
+    formData.append("voice", voiceBlob, "voice-message.webm");
+    formData.append("token[id]", state.user.user_id);
 
-      let res = await api.post(`/chat/${id}/voice`, formData, {
+    let res;
+    if (isGroup) {
+      res = await api.post(`/group/${id}/voice`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
-      setConversations((prev) => [...prev, res.data.chat]);
-      setVoiceBlob(null);
-    } catch (error) {
-      console.log("Voice send error", error);
+    } else {
+      res = await api.post(`/chat/${id}/voice`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
     }
-  };
+
+    setConversations((prev) => [...prev, res.data.chat]);
+    setVoiceBlob(null);
+  } catch (error) {
+    console.log("Voice send error", error);
+  }
+};
 
   if (!id) {
     return (
@@ -140,19 +218,23 @@ const Chat = ({ id }) => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white relative">
-      <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+<div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
   {/* Profile Picture */}
   <img
-    src={userDetail?.profilePic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"}
-    alt="Profile"
-    className="w-10 h-10 rounded-full object-cover border border-gray-600"
-  />
+  src={
+    isGroup
+      ? selectedGroup?.groupPic  || "/group-icon.png"
+      : userDetail?.groupPic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"
+  }
+  alt="Profile"
+  className="w-10 h-10 rounded-full object-cover border border-gray-600"
+/>
 
-  {/* User Full Name */}
-  <h1 className="text-lg font-semibold">
-    {userDetail?.firstName || userDetail?.first_name}{" "}
-    {userDetail?.lastName || userDetail?.last_name}
-  </h1>
+<h1 className="text-lg font-semibold">
+  {isGroup
+    ? selectedGroup?.groupName
+    : `${userDetail?.firstName || ""} ${userDetail?.lastName || ""}`}
+</h1>
 </div>
 
       {/* Messages */}

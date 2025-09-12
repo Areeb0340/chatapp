@@ -1,5 +1,5 @@
 import express from "express";
-import { messageModel,groupModel,groupMessageModel} from "../model.mjs";
+import { messageModel,groupModel,groupMessageModel,userModel } from "../model.mjs";
 import multer from "multer";
 // import path from "path";
 // import multer from "multer";
@@ -265,6 +265,178 @@ router.post("/group/create", async (req, res) => {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+
+  // ------------------ Get Single Group Detail ------------------
+router.get("/group/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const group = await groupModel
+      .findById(id)
+      .populate("members", "firstName lastName profilePic")
+      .populate("admin", "firstName lastName profilePic");
+
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    res.json({
+      message: "Group fetched ✅",
+      group: {
+        group_id: group._id,
+        groupName: group.groupName,
+        members: group.members,
+        admin: group.admin,
+        profilePic: group.profilePic || null,
+      },
+    });
+  } catch (err) {
+    console.error("Get group detail error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+  router.post("/group/:groupId/voice", upload.single("voice"), async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const senderId = req.body.token.id;
+
+    const fileUrl = `/uploads/voices/${req.file.filename}`;
+
+    const msg = await groupMessageModel.create({
+      from: senderId,
+      group: groupId,
+      voiceUrl: fileUrl,
+    });
+
+    const populatedMsg = await groupMessageModel
+      .findById(msg._id)
+      .populate("from", "firstName lastName profilePic")
+      .populate("group", "groupName members admin");
+
+    // Emit to all group members
+    const group = await groupModel.findById(groupId);
+    group.members.forEach((memberId) => {
+      io.emit(`group-${groupId}-${memberId}`, populatedMsg);
+    });
+
+    res.json({ message: "Voice message sent ✅", chat: populatedMsg });
+  } catch (err) {
+    console.log("Group voice send error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/group/:id/upload-pic", async (req, res) => {
+  try {
+    const { groupPic } = req.body; // cloudinary url
+    const group = await groupModel.findByIdAndUpdate(
+      req.params.id,
+      { groupPic },
+      { new: true }
+    );
+    res.json({ message: "Group picture updated ✅", group });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/group/:id/remove-pic", async (req, res) => {
+  try {
+    const group = await groupModel.findByIdAndUpdate(
+      req.params.id,
+      { groupPic: "/default-group.png" },
+      { new: true }
+    );
+    res.json({ message: "Group picture removed ✅", group });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+router.post("/group/:groupId/leave", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.body.token.id; // assuming token middleware sets this
+
+    const group = await groupModel.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Agar user group ka member hi nahi hai
+    if (!group.members.includes(userId)) {
+      return res.status(400).json({ message: "You are not in this group" });
+    }
+
+    // User ko members array se remove karna
+    group.members = group.members.filter(
+      (memberId) => memberId.toString() !== userId.toString()
+    );
+
+    // Agar admin bhi leave kar raha hai
+    if (group.admin.toString() === userId.toString()) {
+      if (group.members.length > 0) {
+        // Option 1: next member ko admin bana do
+        group.admin = group.members[0];
+      } else {
+        // Option 2: group delete kar do agar koi member bacha hi nahi
+        await group.deleteOne();
+        return res.json({ message: "Group deleted because no members left" });
+      }
+    }
+
+    await group.save();
+
+    res.json({ message: "You left the group ✅", group });
+  } catch (err) {
+    console.error("Leave group error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
+router.post("/group/:id/add", async (req, res) => {
+  try {
+    const { id } = req.params; // groupId
+    const { email } = req.body;
+
+    // user find by email
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found ❌" });
+    }
+
+    // group find
+    const group = await groupModel.findById(id);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found ❌" });
+    }
+
+    // already member check
+    if (group.members.includes(user._id)) {
+      return res.status(400).json({ message: "User already in group" });
+    }
+
+    // push new member
+    group.members.push(user._id);
+    await group.save();
+
+    const updatedGroup = await groupModel
+      .findById(id)
+      .populate("members", "firstName lastName email profilePic")
+      .populate("admin", "firstName lastName email profilePic");
+
+    res.json({ message: "Member added ✅", group: updatedGroup });
+  } catch (err) {
+    console.error("Add member error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
   // ------------------ Delete Group Message ------------------
   router.delete("/group/message/:id/forme", async (req, res) => {
