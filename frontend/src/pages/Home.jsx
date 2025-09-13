@@ -203,6 +203,51 @@ const Home = () => {
           </h2>
         </div>
 
+        {showModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-center">
+      <h2 className="text-lg font-semibold mb-4 text-gray-800">Update Profile Picture</h2>
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setProfilePic(e.target.files[0])}
+        className="mb-3 block w-full text-sm text-gray-800"
+      />
+
+      <button
+        onClick={handleUpload}
+        disabled={uploading}
+        className="w-full py-2 mb-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition"
+      >
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+
+      <button
+        onClick={handleRemove}
+        className="w-full py-2 mb-2 rounded-lg bg-gray-600 text-white font-semibold hover:bg-gray-500 transition"
+      >
+        Remove
+      </button>
+
+      <button
+        onClick={() => setShowModal(false)}
+        className="w-full py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+
+
+          <input
+            onChange={(e) => setUser(e.target.value)}
+            type="text"
+            placeholder="Search..."
+            className="w-full px-3 py-2 rounded-md bg-[#40444b] text-sm text-white placeholder-gray-400 outline-none"
+          />
         {/* Create Group Button */}
         <div
           className="flex items-center gap-2 p-3 rounded-lg hover:bg-[#5865f2] cursor-pointer mt-2"
@@ -221,13 +266,64 @@ const Home = () => {
           }}
           className="flex items-center mb-4"
         >
-          <input
-            onChange={(e) => setUser(e.target.value)}
-            type="text"
-            placeholder="Search..."
-            className="w-full px-3 py-2 rounded-md bg-[#40444b] text-sm text-white placeholder-gray-400 outline-none"
-          />
-        </form>
+          </form>
+
+
+
+          {/* Create Group Modal */}
+{showGroupModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 className="text-lg font-semibold mb-4 text-gray-800">Create Group</h2>
+
+      {/* Group Name */}
+      <input
+        type="text"
+        placeholder="Enter group name"
+        value={groupName}
+        onChange={(e) => setGroupName(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg mb-4 text-black"
+      />
+
+      {/* Members Selection */}
+      <div className="max-h-40 overflow-y-auto mb-4">
+        {users.map((u) => (
+          <label key={u._id} className="flex items-center gap-2 mb-2 text-black">
+            <input
+              type="checkbox"
+              value={u._id}
+              checked={selectedMembers.includes(u._id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedMembers((prev) => [...prev, u._id]);
+                } else {
+                  setSelectedMembers((prev) => prev.filter((id) => id !== u._id));
+                }
+              }}
+            />
+            {u.firstName} {u.lastName}
+          </label>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowGroupModal(false)}
+          className="px-4 py-2 bg-gray-400 text-white rounded-lg"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={createGroup}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+        >
+          Create
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Users + Groups List */}
         <div className="overflow-y-auto flex-1 space-y-2">
@@ -431,7 +527,7 @@ const Home = () => {
 
             <input
               type="text"
-              placeholder="Enter user ID or email"
+              placeholder="Enter user email"
               value={newMember}
               onChange={(e) => setNewMember(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg mb-4 text-black"
@@ -448,7 +544,7 @@ const Home = () => {
                 onClick={async () => {
                   try {
                     await api.post(`/group/${selectedGroup._id}/add`, {
-                      userId: newMember,
+                      email: newMember, 
                     });
 
                     alert("Member added successfully ✅");

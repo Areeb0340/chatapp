@@ -6,6 +6,9 @@ import { io } from "socket.io-client";
 import { Send, Smile } from "lucide-react";
 import { AudioRecorder } from "react-audio-voice-recorder";
 import EmojiPicker from "emoji-picker-react";
+import Lottie from "lottie-react";
+import robotAnimation from "./chatbot.json";
+
 
 const Chat = ({ id , groups, selectedGroup }) => {
   let { state } = useContext(GlobalContext);
@@ -210,9 +213,20 @@ const sendVoiceMessage = async () => {
 
   if (!id) {
     return (
+      <>
+      
       <div className="flex-1 bg-[#36393f] flex items-center justify-center text-gray-400">
         <p>Select a user to start chat 💬</p>
+
       </div>
+<div className="flex justify-center items-center h-screen w-full bg-black">
+      <Lottie 
+        animationData={robotAnimation} 
+        loop={true} 
+        className="w-[800px] h-[800px] object-cover"
+      />
+    </div>
+      </>
     );
   }
 

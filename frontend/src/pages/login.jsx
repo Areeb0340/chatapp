@@ -1,7 +1,9 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { GlobalContext } from "../Context/Context";
 import api from "../component/api";
+import Lottie from "lottie-react";
+import chatbotAnimation from "./Robot Futuristic Ai animated.json";
 
 const Login = () => {
   const { state, dispatch } = useContext(GlobalContext);
@@ -10,6 +12,8 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [profilePic, setProfilePic] = useState(null);
   const [uploading, setUploading] = useState(false);
+    const [showSplash, setShowSplash] = useState(true);
+
 
   const navigate = useNavigate();
 
@@ -34,8 +38,37 @@ const Login = () => {
       alert(error?.response?.data?.message || "Login Failed");
     }
   };
-
+useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 10000); // ⏳ apni animation ki length k hisaab se (4s)
+    return () => clearTimeout(timer);
+  }, []);
   
+   if (showSplash) {
+    return (
+     <div className="flex flex-col justify-center items-center h-screen w-full bg-black">
+  {/* 👇 Robot Animation */}
+  <Lottie
+    animationData={chatbotAnimation}
+    loop={true}
+    className="w-[500px] h-[500px]"
+  />
+
+  {/* 👇 WECHAT Logo */}
+  <h1 className="text-6xl font-extrabold mt-0 bg-gradient-to-r from-purple-500 via-white to-purple-400 text-transparent bg-clip-text animate-gradient">
+    WECHAT!
+  </h1>
+  {/* 👇 Hy! Welcome Text */}
+  <h1 className="text-white text-4xl font-bold animate-bounce mt-4">
+    Hy! Welcome
+  </h1>
+
+</div>
+    );
+  }
+
+  // 🚀 Login Screen
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       <div className="w-full max-w-md p-8 rounded-2xl shadow-xl bg-gray-900 border border-gray-700">
@@ -43,7 +76,6 @@ const Login = () => {
           Welcome Back
         </h1>
 
-        {/* 👇 Login Form */}
         <form onSubmit={loginUser} className="space-y-4">
           <div>
             <label className="block text-sm text-gray-400 mb-1">Email</label>
@@ -87,6 +119,6 @@ const Login = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Login;
