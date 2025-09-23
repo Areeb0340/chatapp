@@ -27,13 +27,11 @@ mongoose.connect(process.env.MONGODBURL)
   const SECRET = process.env.SECRET_TOKEN
 app.use(cors({
   origin: ['http://localhost:3000'], // frontend origin
-  credentials: true
+  credentials: true,
+      methods: "*" 
 }));
 app.use(express.json());
 app.use(cookieParser());
-
-
-
 
 
 app.use('/api/v1/',authApi)
@@ -142,6 +140,8 @@ app.get('/api/v1/users', async(req, res) => {
 
 app.use('/api/v1', messageApi(io))
 
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
     // console.log('a user connected', socket.id);
     console.log(socket?.handshake?.headers?.cookie);
@@ -161,7 +161,8 @@ io.on('connection', (socket) => {
                 if (decodedData.exp < nowDate) {
                     socket.disconnect()
                 } else {
-    
+                    onlineUsers.set(decodedData.id, socket.id);
+          console.log("User registered in socket:", decodedData.id, socket.id);
                 }
             } else {
                 socket.disconnect()
@@ -169,11 +170,47 @@ io.on('connection', (socket) => {
         });
     }
 
-    socket.on("disconnect", (reason) => {
-        console.log("Client disconnected:", socket.id, "Reason:", reason);
-    });
 
+      // -------------------- 🔥 Calling Events --------------------
+  // 📞 Call start
+  socket.on("call-user", ({ from, to, offer }) => {
+    const targetSocket = onlineUsers.get(to);
+    if (targetSocket) {
+      io.to(targetSocket).emit("incoming-call", { from, offer });
+      console.log(`📞 Call offer from ${from} -> ${to}`);
+    }
+  });
+
+  socket.on("answer-call", ({ from, to, answer }) => {
+    const targetSocket = onlineUsers.get(to);
+    if (targetSocket) {
+      io.to(targetSocket).emit("call-answered", { from, answer });
+      console.log(`✅ Call answered by ${from} -> ${to}`);
+    }
+  });
+
+  socket.on("ice-candidate", ({ from, to, candidate }) => {
+    const targetSocket = onlineUsers.get(to);
+    if (targetSocket) {
+      io.to(targetSocket).emit("ice-candidate", { from, candidate });
+      console.log(`🔄 ICE candidate exchanged between ${from} and ${to}`);
+    }
+  });
+
+  socket.on("disconnect", (reason) => {
+    for (let [userId, id] of onlineUsers.entries()) {
+      if (id === socket.id) {
+        onlineUsers.delete(userId);
+        break;
+      }
+    }
+    console.log("Client disconnected:", socket.id, "Reason:", reason);
+  });
 });
+
+
+ 
+
 
 
 
