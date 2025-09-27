@@ -12,6 +12,7 @@ import messageApi from './api/message.mjs';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cookie from 'cookie'
+import path from "path";
 
 
 const app = express();
@@ -210,7 +211,9 @@ io.on('connection', (socket) => {
 
 
  
-
+const __dirname = path.resolve();
+app.use('/', express.static(path.join(__dirname, './frontend/build')))
+app.use("/*splat" , express.static(path.join(__dirname, './frontend/build')))
 
 
 

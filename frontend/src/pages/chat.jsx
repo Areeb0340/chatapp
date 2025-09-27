@@ -168,6 +168,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
     // when remote track arrives, show it in remote video
     pc.ontrack = (event) => {
       // multiple streams possible; pick first
+       console.log("📹 Remote track received:", event.streams);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
@@ -226,12 +227,13 @@ const Chat = ({ id, groups, selectedGroup }) => {
         video: true,
         audio: true,
       });
+      console.log("Callee stream tracks:", localStream.getTracks());
       localStreamRef.current = localStream;
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
 
       // add tracks
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-
+      localStream.getTracks().forEach((track ) => pc.addTrack(track, localStream));
+  console.log("🎤 Adding local track:", track.kind);
       // set remote description (offer)
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
