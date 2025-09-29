@@ -166,13 +166,15 @@ const Chat = ({ id, groups, selectedGroup }) => {
     };
 
     // when remote track arrives, show it in remote video
-    pc.ontrack = (event) => {
-      // multiple streams possible; pick first
-      console.log("📹 Remote track received:", event.streams);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-      }
-    };
+  pc.ontrack = (event) => {
+  console.log("📹 Remote track received:", event.streams);
+  if (remoteVideoRef.current) {
+    const [remoteStream] = event.streams;
+    remoteVideoRef.current.srcObject = remoteStream;
+    remoteStream.oninactive = () => console.log("Remote stream ended");
+  }
+};
+
 
     return pc;
   };
@@ -238,11 +240,10 @@ const Chat = ({ id, groups, selectedGroup }) => {
       setIsCalling(true);
 
       // add tracks
-      localStream.getTracks().forEach((track) => {
-        pc.addTrack(track, localStream);
-        console.log("🎤 Adding local track:", track.kind);
-      });
-
+    localStream.getTracks().forEach((track) => {
+  console.log("🎤 Adding local track:", track.kind);
+  pc.addTrack(track, localStream);
+});
       // set remote description (offer)
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -279,39 +280,27 @@ const Chat = ({ id, groups, selectedGroup }) => {
     cleanupCall();
   };
 
-  const cleanupCall = () => {
-    // stop local tracks
-    try {
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
-        localStreamRef.current = null;
-      }
-    } catch (e) {
-      console.warn("Error stopping local stream", e);
+ const cleanupCall = () => {
+  try {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
     }
-
-    // stop remote video element
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (pcRef.current) {
+      pcRef.current.ontrack = null;
+      pcRef.current.onicecandidate = null;
+      pcRef.current.close();
+      pcRef.current = null;
     }
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
-
-    // close RTCPeerConnection
-    try {
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
-      }
-    } catch (e) {
-      console.warn("Error closing pc", e);
-    }
-
-    setInCallWith(null);
-    setIsCalling(false);
-    setIncomingCall(null);
-  };
+  } catch (e) {
+    console.warn("Cleanup error:", e);
+  }
+  setIsCalling(false);
+  setIncomingCall(null);
+  setInCallWith(null);
+};
 
   // -------------------- The rest of existing chat code (send, delete, voice, etc.) --------------------
   const deleteMessageForMe = async (msgId) => {
@@ -406,178 +395,282 @@ const Chat = ({ id, groups, selectedGroup }) => {
     }
     return () => window.removeEventListener("click", handleClick);
   }, [showEmojiPicker]);
-
-  if (!id) {
-    return (
-      <>
-        <div className="flex-1 bg-[#36393f] flex items-center justify-center text-gray-400">
-          <p>Select a user to start chat 💬</p>
-        </div>
-        <div className="flex justify-center items-center h-screen w-full bg-black">
-          <Lottie animationData={robotAnimation} loop={true} className="w-[800px] h-[800px] object-cover" />
-        </div>
-      </>
-    );
-  }
-
+if (!id) {
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white relative">
-      {/* Header */}
-      <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
-        <img
-          src={
-            isGroup ? selectedGroup?.groupPic || "/group-icon.png" : userDetail?.groupPic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"
-          }
-          alt="Profile"
-          className="w-10 h-10 rounded-full object-cover border border-gray-600"
-        />
-        <h1 className="text-lg font-semibold">
-          {isGroup ? selectedGroup?.groupName : `${userDetail?.firstName || ""} ${userDetail?.lastName || ""}`}
-        </h1>
-
-        {/* Call Controls */}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Video Call */}
-          <button onClick={startVideoCall} className="p-2 bg-green-600 rounded-lg hover:bg-green-700">
-            <Video className="w-5 h-5" />
-          </button>
-
-          {/* End Call (visible while in call) */}
-          {isCalling && (
-            <button onClick={endCall} className="p-2 bg-red-600 rounded-lg hover:bg-red-700">
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+    <div className="flex flex-col md:flex-row h-screen">
+      {/* Left message */}
+      <div className="flex-1 bg-[#36393f] flex items-center justify-center text-gray-400 text-center p-4">
+        <p>Select a user to start chat 💬</p>
       </div>
 
-      {/* Video Call Overlay (WhatsApp-like) */}
-     {isCalling && (
-  <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-    {/* Remote full screen */}
-    <video
-      ref={remoteVideoRef}
-      autoPlay
-      playsInline
-      className="w-full h-full object-cover"
-    />
+      {/* Robot animation */}
+      <div className="flex justify-center items-center h-full w-full bg-black">
+        <Lottie
+          animationData={robotAnimation}
+          loop={true}
+          className="w-[250px] h-[250px] md:w-[600px] md:h-[600px] object-cover"
+        />
+      </div>
+    </div>
+  );
+}
 
-    {/* Local small preview top-right */}
-    <div className="absolute top-4 right-4 w-48 h-32 rounded-lg overflow-hidden border-2 border-white">
-      <video
-        ref={localVideoRef}
-        autoPlay
-        muted
-        playsInline
-        className="w-full h-full object-cover"
+return (
+  <div className="flex flex-col h-screen bg-gray-900 text-white relative">
+    {/* Header */}
+    <div className="p-3 md:p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+      <img
+        src={
+          isGroup
+            ? selectedGroup?.groupPic || "/group-icon.png"
+            : userDetail?.groupPic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"
+        }
+        alt="Profile"
+        className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-gray-600"
       />
+      <h1 className="text-sm md:text-lg font-semibold truncate max-w-[150px] md:max-w-none">
+        {isGroup
+          ? selectedGroup?.groupName
+          : `${userDetail?.firstName || ""} ${userDetail?.lastName || ""}`}
+      </h1>
+
+      {/* Call Controls */}
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={startVideoCall}
+          className="p-2 bg-green-600 rounded-lg hover:bg-green-700"
+        >
+          <Video className="w-4 h-4 md:w-5 md:h-5" />
+        </button>
+
+        {isCalling && (
+          <button
+            onClick={endCall}
+            className="p-2 bg-red-600 rounded-lg hover:bg-red-700"
+          >
+            <X className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        )}
+      </div>
     </div>
 
-    {/* End Call button */}
-    <button
-      onClick={endCall}
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white"
-    >
-      End Call
-    </button>
-  </div>
-)}
+    {/* Video Call Overlay */}
+    {isCalling && (
+      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+        />
 
-      {/* Incoming call popup (if someone calls you) */}
-      {incomingCall && !isCalling && (
-        <div className="absolute inset-0 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-md shadow-lg text-center">
-            <p className="mb-3">Incoming call from {incomingCall.from}</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={acceptCall} className="px-4 py-2 bg-green-600 rounded">Accept</button>
-              <button onClick={declineCall} className="px-4 py-2 bg-red-600 rounded">Decline</button>
+        <div className="absolute top-3 right-3 w-28 h-20 md:w-48 md:h-32 rounded-lg overflow-hidden border-2 border-white">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <button
+          onClick={endCall}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 md:px-6 md:py-3 bg-red-600 rounded-full text-white"
+        >
+          End Call
+        </button>
+      </div>
+    )}
+
+    {/* Incoming call popup */}
+    {incomingCall && !isCalling && (
+      <div className="absolute inset-0 flex items-center justify-center z-50">
+        <div className="bg-gray-800 p-4 md:p-6 rounded-md shadow-lg text-center">
+          <p className="mb-3 text-sm md:text-base">
+            Incoming call from {incomingCall.from}
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={acceptCall}
+              className="px-3 py-1 md:px-4 md:py-2 bg-green-600 rounded"
+            >
+              Accept
+            </button>
+            <button
+              onClick={declineCall}
+              className="px-3 py-1 md:px-4 md:py-2 bg-red-600 rounded"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Messages */}
+    <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
+      {conversations?.map((eachMessage, i) => {
+        const isMine = eachMessage?.from?._id === state.user.user_id;
+        return (
+          <div
+            key={i}
+            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+          >
+            <div className="relative max-w-[80%] sm:max-w-xs md:max-w-md">
+              <div
+                className={`p-2 md:p-3 rounded-2xl ${
+                  isMine
+                    ? "bg-blue-600 text-white rounded-br-none"
+                    : "bg-gray-700 text-gray-100 rounded-bl-none"
+                }`}
+              >
+                <p className="font-medium text-xs md:text-sm">
+                  {eachMessage?.from?.firstName} {eachMessage?.from?.lastName}
+                </p>
+                {eachMessage?.text && (
+                  <p className="mt-1 text-sm">{eachMessage?.text}</p>
+                )}
+                {eachMessage?.voiceUrl && (
+                  <audio
+                    controls
+                    className="mt-2 w-full"
+                    src={`${state.baseFileUrl}${eachMessage.voiceUrl}`}
+                  />
+                )}
+                <span className="text-[10px] md:text-xs text-gray-300 block mt-1">
+                  {moment(eachMessage?.createdOn).fromNow()}
+                </span>
+              </div>
+
+              {/* Menu */}
+              <div className="absolute top-1 right-1">
+                <button
+                  onClick={() =>
+                    setMenuOpen(
+                      menuOpen === eachMessage._id ? null : eachMessage._id
+                    )
+                  }
+                  className="text-gray-300 hover:text-white"
+                >
+                  ⋮
+                </button>
+                {menuOpen === eachMessage._id && (
+                  <div className="absolute right-0 mt-1 w-32 md:w-40 bg-gray-800 rounded-md shadow-lg z-10 text-sm">
+                    <button
+                      onClick={() => {
+                        deleteMessageForMe(eachMessage._id);
+                        setMenuOpen(null);
+                      }}
+                      className="block w-full text-left px-3 py-2 hover:bg-gray-700"
+                    >
+                      Delete for Me
+                    </button>
+                    {isMine && (
+                      <button
+                        onClick={() => {
+                          deleteMessageForEveryone(eachMessage._id);
+                          setMenuOpen(null);
+                        }}
+                        className="block w-full text-left px-3 py-2 hover:bg-gray-700"
+                      >
+                        Delete for Everyone
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        forwardMessage(eachMessage._id);
+                        setMenuOpen(null);
+                      }}
+                      className="block w-full text-left px-3 py-2 hover:bg-gray-700"
+                    >
+                      Forward
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        );
+      })}
+    </div>
+
+    {/* Input Box */}
+    <form
+      onSubmit={sendMessage}
+      className="p-2 md:p-4 bg-gray-800 border-t border-gray-700 flex gap-2 items-center relative"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {!voiceBlob ? (
+        <AudioRecorder
+          onRecordingComplete={(blob) => setVoiceBlob(blob)}
+          audioTrackConstraints={{ noiseSuppression: true, echoCancellation: true }}
+          downloadOnSavePress={false}
+          downloadFileExtension="webm"
+        />
+      ) : (
+        <div className="flex items-center gap-2">
+          <audio controls src={URL.createObjectURL(voiceBlob)} />
+          <button
+            type="button"
+            onClick={sendVoiceMessage}
+            className="p-2 bg-green-600 hover:bg-green-700 rounded-full"
+          >
+            <Send className="w-4 h-4 md:w-5 md:h-5 text-white" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setVoiceBlob(null)}
+            className="text-red-400 text-xs md:text-sm"
+          >
+            Cancel
+          </button>
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {conversations?.map((eachMessage, i) => {
-          const isMine = eachMessage?.from?._id === state.user.user_id;
-          return (
-            <div key={i} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-              <div className="relative">
-                <div className={`max-w-xs md:max-w-md p-3 rounded-2xl ${isMine ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-700 text-gray-100 rounded-bl-none"}`}>
-                  <p className="font-medium text-sm">{eachMessage?.from?.firstName} {eachMessage?.from?.lastName}</p>
+      <textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Write your message..."
+        className="flex-1 resize-none rounded-lg p-2 bg-gray-700 text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+        rows={1}
+      />
 
-                  {/* Text */}
-                  {eachMessage?.text && <p className="mt-1">{eachMessage?.text}</p>}
+      <button
+        type="submit"
+        className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center"
+      >
+        <Send className="w-4 h-4 md:w-5 md:h-5" />
+      </button>
 
-                  {/* Audio */}
-                  {eachMessage?.voiceUrl && (
-                    <audio controls className="mt-2 w-100" src={`${state.baseFileUrl}${eachMessage.voiceUrl}`} />
-                  )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowEmojiPicker(!showEmojiPicker);
+        }}
+        className="p-2 text-gray-300 hover:text-white"
+      >
+        <Smile className="w-5 h-5 md:w-6 md:h-6" />
+      </button>
 
-                  <span className="text-xs text-gray-300 block mt-1">{moment(eachMessage?.createdOn).fromNow()}</span>
-                </div>
+      {showEmojiPicker && (
+        <div
+          className="absolute bottom-14 right-2 md:bottom-16 md:right-4 bg-gray-800 rounded-lg shadow-lg z-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <EmojiPicker
+            onEmojiClick={(emojiData) =>
+              setMessage((prev) => prev + emojiData.emoji)
+            }
+            theme="dark"
+          />
+        </div>
+      )}
+    </form>
+  </div>
+);
 
-                {/* 3 dots menu */}
-                <div className="absolute top-1 right-1">
-                  <button
-                    onClick={() => setMenuOpen(menuOpen === eachMessage._id ? null : eachMessage._id)}
-                    className="text-gray-300 hover:text-white"
-                  >
-                    ⋮
-                  </button>
-                  {menuOpen === eachMessage._id && (
-                    <div className="absolute right-0 mt-1 w-40 bg-gray-800 rounded-md shadow-lg z-10">
-                      <button onClick={() => { deleteMessageForMe(eachMessage._id); setMenuOpen(null); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-700">Delete for Me</button>
-
-                      {isMine && (
-                        <button onClick={() => { deleteMessageForEveryone(eachMessage._id); setMenuOpen(null); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-700">Delete for Everyone</button>
-                      )}
-
-                      <button onClick={() => { forwardMessage(eachMessage._id); setMenuOpen(null); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-700">Forward</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Input box */}
-      <form onSubmit={sendMessage} className="p-4 bg-gray-800 border-t border-gray-700 flex gap-2 items-center relative" onClick={(e) => e.stopPropagation()}>
-        {/* 🎤 Voice Recorder */}
-        {!voiceBlob ? (
-          <AudioRecorder onRecordingComplete={(blob) => setVoiceBlob(blob)} audioTrackConstraints={{ noiseSuppression: true, echoCancellation: true }} downloadOnSavePress={false} downloadFileExtension="webm" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <audio controls src={URL.createObjectURL(voiceBlob)} />
-            <button type="button" onClick={sendVoiceMessage} className="p-2 bg-green-600 hover:bg-green-700 rounded-full">
-              <Send className="w-5 h-5 text-white" />
-            </button>
-            <button type="button" onClick={() => setVoiceBlob(null)} className="text-red-400 text-sm">Cancel</button>
-          </div>
-        )}
-
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your message..." className="flex-1 resize-none rounded-lg p-2 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-        <button type="submit" className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center">
-          <Send className="w-5 h-5" />
-        </button>
-
-        {/* 😀 Emoji Button */}
-        <button type="button" onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }} className="p-2 text-gray-300 hover:text-white">
-          <Smile className="w-6 h-6" />
-        </button>
-
-        {/* Emoji Picker Box */}
-        {showEmojiPicker && (
-          <div className="absolute bottom-16 right-4 bg-gray-800 rounded-lg shadow-lg z-50" onClick={(e) => e.stopPropagation()}>
-            <EmojiPicker onEmojiClick={(emojiData) => setMessage((prev) => prev + emojiData.emoji)} theme="dark" />
-          </div>
-        )}
-      </form>
-    </div>
-  );
 };
 
 export default Chat;
