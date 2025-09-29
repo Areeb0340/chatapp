@@ -27,7 +27,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const remoteVideoRef = useRef(null);
   const [incomingCall, setIncomingCall] = useState(null); // { from, offer }
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
-  const [isCalling, setIsCalling] = useState(false);
+  const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
 
   const STUN_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -168,7 +168,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
     // when remote track arrives, show it in remote video
     pc.ontrack = (event) => {
       // multiple streams possible; pick first
-       console.log("📹 Remote track received:", event.streams);
+      console.log("📹 Remote track received:", event.streams);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
@@ -192,6 +192,10 @@ const Chat = ({ id, groups, selectedGroup }) => {
       localStreamRef.current = localStream;
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
 
+      // show call UI immediately for caller (local preview)
+      setIsCalling(true);
+      setInCallWith(id);
+
       // add local tracks to peer
       localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
@@ -206,7 +210,6 @@ const Chat = ({ id, groups, selectedGroup }) => {
         offer,
       });
 
-      setInCallWith(id);
       // waiting for answer -> handled by "call-answered"
     } catch (err) {
       console.error("startVideoCall error:", err);
@@ -231,9 +234,15 @@ const Chat = ({ id, groups, selectedGroup }) => {
       localStreamRef.current = localStream;
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
 
+      // show call UI for callee (local preview)
+      setIsCalling(true);
+
       // add tracks
-      localStream.getTracks().forEach((track ) => pc.addTrack(track, localStream));
-  console.log("🎤 Adding local track:", track.kind);
+      localStream.getTracks().forEach((track) => {
+        pc.addTrack(track, localStream);
+        console.log("🎤 Adding local track:", track.kind);
+      });
+
       // set remote description (offer)
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -249,7 +258,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
       });
 
       setInCallWith(from);
-      setIsCalling(true);
+      // setIsCalling(true); already set above
       setIncomingCall(null);
     } catch (err) {
       console.error("acceptCall error:", err);
@@ -442,14 +451,40 @@ const Chat = ({ id, groups, selectedGroup }) => {
         </div>
       </div>
 
-      {/* Local & Remote Video */}
-      <div className="flex gap-2 p-2">
-        <video ref={localVideoRef} autoPlay muted className="w-1/2 h-64 bg-black rounded-md" />
-        <video ref={remoteVideoRef} autoPlay className="w-1/2 h-64 bg-black rounded-md" />
-      </div>
+      {/* Video Call Overlay (WhatsApp-like) */}
+     {isCalling && (
+  <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+    {/* Remote full screen */}
+    <video
+      ref={remoteVideoRef}
+      autoPlay
+      playsInline
+      className="w-full h-full object-cover"
+    />
 
-      {/* Incoming call popup */}
-      {incomingCall && (
+    {/* Local small preview top-right */}
+    <div className="absolute top-4 right-4 w-48 h-32 rounded-lg overflow-hidden border-2 border-white">
+      <video
+        ref={localVideoRef}
+        autoPlay
+        muted
+        playsInline
+        className="w-full h-full object-cover"
+      />
+    </div>
+
+    {/* End Call button */}
+    <button
+      onClick={endCall}
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white"
+    >
+      End Call
+    </button>
+  </div>
+)}
+
+      {/* Incoming call popup (if someone calls you) */}
+      {incomingCall && !isCalling && (
         <div className="absolute inset-0 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-md shadow-lg text-center">
             <p className="mb-3">Incoming call from {incomingCall.from}</p>
