@@ -29,7 +29,13 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
 
-  const STUN_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+  const STUN_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" },
+     {
+      urls: "turn:your-turn-server-ip:3478",
+      username: "test",
+      credential: "test123"
+    }
+  ] };
 
   const getConversation = async () => {
     try {
