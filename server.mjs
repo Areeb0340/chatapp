@@ -145,6 +145,8 @@ const onlineUsers = new Map();
 
 io.on('connection', (socket) => {
     // console.log('a user connected', socket.id);
+     console.log("✅ New socket connected:", socket.id);
+ 
     console.log(socket?.handshake?.headers?.cookie);
     let userCookie;
     if(socket?.handshake?.headers?.cookie){
@@ -176,6 +178,7 @@ io.on('connection', (socket) => {
   // 📞 Call start
   socket.on("call-user", ({ from, to, offer }) => {
     const targetSocket = onlineUsers.get(to);
+      console.log("📞 call-user event:", { from, to, hasTarget: !!targetSocket });
     if (targetSocket) {
       io.to(targetSocket).emit("incoming-call", { from, offer });
       console.log(`📞 Call offer from ${from} -> ${to}`);
@@ -184,6 +187,7 @@ io.on('connection', (socket) => {
 
   socket.on("answer-call", ({ from, to, answer }) => {
     const targetSocket = onlineUsers.get(to);
+      console.log("📞 call-user event:", { from, to, hasTarget: !!targetSocket });
     if (targetSocket) {
       io.to(targetSocket).emit("call-answered", { from, answer });
       console.log(`✅ Call answered by ${from} -> ${to}`);
@@ -192,6 +196,7 @@ io.on('connection', (socket) => {
 
   socket.on("ice-candidate", ({ from, to, candidate }) => {
     const targetSocket = onlineUsers.get(to);
+      console.log("📡 ice-candidate event:", { from, to, hasTarget: !!targetSocket, candidate: !!candidate });
     if (targetSocket) {
       io.to(targetSocket).emit("ice-candidate", { from, candidate });
       console.log(`🔄 ICE candidate exchanged between ${from} and ${to}`);
