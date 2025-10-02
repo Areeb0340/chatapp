@@ -186,29 +186,36 @@ const createPeerConnection = (remoteUserId) => {
     }
   };
 
-  pc.ontrack = (event) => {
-    console.log("📹 Remote track received:", event.streams);
-    if (remoteVideoRef.current) {
-      const [remoteStream] = event.streams;
+pc.ontrack = (event) => {
+  console.log("📹 Remote track received:", event.streams);
+
+  if (remoteVideoRef.current) {
+    const [remoteStream] = event.streams;
+
+    // 🔒 Sirf ek hi dafa set karna hai
+    if (!remoteVideoRef.current.srcObject) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.autoplay = true;
+      remoteVideoRef.current.playsInline = true;
+      remoteVideoRef.current.muted = false; // remote audio chalay ga
+
+      remoteVideoRef.current.play().catch(err => {
+        console.warn("⚠️ Remote video autoplay blocked:", err);
+      });
+
       console.log("✅ Remote stream attached to remoteVideoRef");
-
-        remoteVideoRef.current.autoplay = true;
-  remoteVideoRef.current.playsInline = true;
-    remoteVideoRef.current.play().catch(err => {
-    console.warn("⚠️ Remote video autoplay blocked:", err);
-  });
-
-  console.log("✅ Remote stream attached to remoteVideoRef");
-
-  
-      remoteStream.oninactive = () => console.log("❌ Remote stream ended");
     } else {
-      console.log("⚠️ remoteVideoRef.current is null");
+      console.log("ℹ️ Remote stream already set, skipping reset");
     }
-  };
 
-  return pc;
+    // 🔄 Debug: agar remote stream end ho jaye
+    remoteStream.oninactive = () => console.log("❌ Remote stream ended");
+  } else {
+    console.log("⚠️ remoteVideoRef.current is null");
+  }
+};
+
+return pc;
 };
 
 // -------------------- Start Video Call (caller) --------------------
