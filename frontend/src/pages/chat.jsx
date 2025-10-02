@@ -29,13 +29,23 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
 
-  const STUN_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" },
-     {
+ const STUN_SERVERS = {
+  iceServers: [
+    // ✅ Free Google STUN servers (basic NAT traversal)
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+
+    // ✅ Optional TURN server (agar tumhare paas khud ka setup hai)
+    {
       urls: "turn:your-turn-server-ip:3478",
       username: "test",
       credential: "test123"
     }
-  ] };
+  ]
+};
 
   const getConversation = async () => {
     try {
@@ -207,9 +217,15 @@ const startVideoCall = async () => {
     console.log("🎥 Caller local stream tracks:", localStream.getTracks());
     localStreamRef.current = localStream;
     if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream;
-      console.log("✅ Local stream attached to localVideoRef (caller)");
-    }
+  localVideoRef.current.srcObject = localStream;
+  localVideoRef.current.muted = true; 
+  localVideoRef.current.autoplay = true;
+  localVideoRef.current.playsInline = true;
+  localVideoRef.current.play().catch(err => {
+    console.warn("⚠️ Local video autoplay blocked:", err);
+  });
+  console.log("✅ Local stream attached to localVideoRef (caller)");
+}
 
     setIsCalling(true);
     setInCallWith(id);
@@ -252,10 +268,16 @@ const acceptCall = async () => {
     });
     console.log("🎥 Callee local stream tracks:", localStream.getTracks());
     localStreamRef.current = localStream;
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream;
-      console.log("✅ Local stream attached to localVideoRef (callee)");
-    }
+   if (localVideoRef.current) {
+  localVideoRef.current.srcObject = localStream;
+  localVideoRef.current.muted = true;
+  localVideoRef.current.autoplay = true;
+  localVideoRef.current.playsInline = true;
+  localVideoRef.current.play().catch(err => {
+    console.warn("⚠️ Local video autoplay blocked:", err);
+  });
+  console.log("✅ Local stream attached to localVideoRef (callee)");
+}
 
     setIsCalling(true);
 
