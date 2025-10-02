@@ -29,7 +29,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
 
- const STUN_SERVERS = {
+const STUN_SERVERS = {
   iceServers: [
     // ✅ Free Google STUN servers (basic NAT traversal)
     { urls: "stun:stun.l.google.com:19302" },
@@ -38,15 +38,14 @@ const Chat = ({ id, groups, selectedGroup }) => {
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
 
-    // ✅ Optional TURN server (agar tumhare paas khud ka setup hai)
+    // ✅ Free public TURN server (for testing only)
     {
-      urls: "turn:your-turn-server-ip:3478",
-      username: "test",
-      credential: "test123"
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject"
     }
   ]
 };
-
   const getConversation = async () => {
     try {
       let Conversation = await api.get(`/conversation/${id}`);
