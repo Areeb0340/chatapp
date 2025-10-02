@@ -192,9 +192,19 @@ const createPeerConnection = (remoteUserId) => {
       const [remoteStream] = event.streams;
       remoteVideoRef.current.srcObject = remoteStream;
       console.log("✅ Remote stream attached to remoteVideoRef");
+
+        remoteVideoRef.current.autoplay = true;
+  remoteVideoRef.current.playsInline = true;
+    remoteVideoRef.current.play().catch(err => {
+    console.warn("⚠️ Remote video autoplay blocked:", err);
+  });
+
+  console.log("✅ Remote stream attached to remoteVideoRef");
+
+  
       remoteStream.oninactive = () => console.log("❌ Remote stream ended");
     } else {
-      console.warn("⚠️ remoteVideoRef.current is null");
+      console.log("⚠️ remoteVideoRef.current is null");
     }
   };
 
