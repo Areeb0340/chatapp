@@ -278,6 +278,9 @@ const acceptCall = async () => {
     const socket = socketRef.current;
     const pc = createPeerConnection(from);
 
+    
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        console.log("✅ Remote description set (offer)");
     const localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true,
@@ -301,9 +304,6 @@ const acceptCall = async () => {
       console.log("➕ Adding local track (callee):", track.kind);
       pc.addTrack(track, localStream);
     });
-
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    console.log("✅ Remote description set (offer)");
 
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
