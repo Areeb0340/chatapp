@@ -27,28 +27,26 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const remoteVideoRef = useRef(null);
   const [incomingCall, setIncomingCall] = useState(null); // { from, offer }
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
-  const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
+  const [isCalling, setIsCalling] = useState(false);
+  
 const STUN_SERVERS = {
   iceServers: [
-    // Optional backup STUN (Google)
     { urls: "stun:stun.l.google.com:19302" },
-
-    // ✅ Metered.ca TURN/STUN servers (grouped for better browser handling)
     {
       urls: [
-        "stun:stun.relay.metered.ca:80",
-        "turn:global.relay.metered.ca:80?transport=udp",
-        "turn:global.relay.metered.ca:80?transport=tcp",
-        "turn:global.relay.metered.ca:443?transport=tcp",
-        "turns:global.relay.metered.ca:443?transport=tcp"
+        "turn:global.relay.metered.ca:80",
+        "turn:global.relay.metered.ca:443",
+        "turns:global.relay.metered.ca:443?transport=tcp",
       ],
       username: "2e0283fd805f1b04b52d8c52",
       credential: "/KnbRwWE4WiSCLop",
-    }
+    },
+    {
+      urls: "turn:relay1.expressturn.com:3478",
+      username: "efree",
+      credential: "efree",
+    },
   ],
-
-  // Optional: reduce pre-gather latency
-  iceCandidatePoolSize: 0,
 };
   const getConversation = async () => {
     try {
@@ -191,7 +189,8 @@ const createPeerConnection = (remoteUserId) => {
   };
 
 pc.ontrack = (event) => {
-  console.log("📹 Remote track received:", event.streams);
+  console.log("📹 Remote track received:", event.streams[0]);
+  remoteVideoRef.current.srcObject = event.streams[0];
 
   if (remoteVideoRef.current) {
     const [remoteStream] = event.streams;
@@ -456,7 +455,7 @@ const acceptCall = async () => {
     }
     return () => window.removeEventListener("click", handleClick);
   }, [showEmojiPicker]);
-  
+
 if (!id) {
   return (
     <div className="flex flex-col md:flex-row h-screen">
@@ -518,33 +517,37 @@ return (
 
     {/* Video Call Overlay */}
     {isCalling && (
-      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover"
-        />
+  <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
+    {/* Remote video */}
+    <video
+      ref={remoteVideoRef}
+      autoPlay
+      playsInline
+      className="w-full h-full object-cover bg-black"
+      onLoadedMetadata={(e) => e.target.play().catch(() => {})}
+    />
 
-        <div className="absolute top-3 right-3 w-28 h-20 md:w-48 md:h-32 rounded-lg overflow-hidden border-2 border-white">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        </div>
+    {/* Local video (small preview) */}
+    <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 rounded-lg overflow-hidden border-2 border-white">
+      <video
+        ref={localVideoRef}
+        autoPlay
+        muted
+        playsInline
+        className="w-full h-full object-cover bg-black"
+        onLoadedMetadata={(e) => e.target.play().catch(() => {})}
+      />
+    </div>
 
-        <button
-          onClick={endCall}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 md:px-6 md:py-3 bg-red-600 rounded-full text-white"
-        >
-          End Call
-        </button>
-      </div>
-    )}
-
+    {/* End Call button */}
+    <button
+      onClick={endCall}
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white text-lg font-semibold hover:bg-red-700 transition"
+    >
+      End Call
+    </button>
+  </div>
+)}
     {/* Incoming call popup */}
     {incomingCall && !isCalling && (
       <div className="absolute inset-0 flex items-center justify-center z-50">
