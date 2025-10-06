@@ -28,36 +28,27 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [incomingCall, setIncomingCall] = useState(null); // { from, offer }
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false); // whether call UI overlay should show / call ongoing
-
 const STUN_SERVERS = {
   iceServers: [
-    // ✅ Metered.ca STUN server
-    {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
+    // Optional backup STUN (Google)
+    { urls: "stun:stun.l.google.com:19302" },
 
-    // ✅ Metered.ca TURN servers (for all network types)
+    // ✅ Metered.ca TURN/STUN servers (grouped for better browser handling)
     {
-      urls: "turn:global.relay.metered.ca:80",
+      urls: [
+        "stun:stun.relay.metered.ca:80",
+        "turn:global.relay.metered.ca:80?transport=udp",
+        "turn:global.relay.metered.ca:80?transport=tcp",
+        "turn:global.relay.metered.ca:443?transport=tcp",
+        "turns:global.relay.metered.ca:443?transport=tcp"
+      ],
       username: "2e0283fd805f1b04b52d8c52",
       credential: "/KnbRwWE4WiSCLop",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "2e0283fd805f1b04b52d8c52",
-      credential: "/KnbRwWE4WiSCLop",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "2e0283fd805f1b04b52d8c52",
-      credential: "/KnbRwWE4WiSCLop",
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: "2e0283fd805f1b04b52d8c52",
-      credential: "/KnbRwWE4WiSCLop",
-    },
+    }
   ],
+
+  // Optional: reduce pre-gather latency
+  iceCandidatePoolSize: 0,
 };
   const getConversation = async () => {
     try {
@@ -465,6 +456,7 @@ const acceptCall = async () => {
     }
     return () => window.removeEventListener("click", handleClick);
   }, [showEmojiPicker]);
+  
 if (!id) {
   return (
     <div className="flex flex-col md:flex-row h-screen">
