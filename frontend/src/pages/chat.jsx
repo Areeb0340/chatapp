@@ -261,8 +261,8 @@ const STUN_SERVERS = {
           console.warn("⚠️ Remote video play() failed:", err);
         }
       };
-      return pc;
     };
+    return pc;
 
   };
 
