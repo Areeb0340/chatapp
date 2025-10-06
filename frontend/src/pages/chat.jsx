@@ -31,20 +31,33 @@ const Chat = ({ id, groups, selectedGroup }) => {
 
 const STUN_SERVERS = {
   iceServers: [
-    // ✅ Free Google STUN servers (basic NAT traversal)
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-
-    // ✅ Free public TURN server (for testing only)
+    // ✅ Metered.ca STUN server
     {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject"
-    }
-  ]
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+
+    // ✅ Metered.ca TURN servers (for all network types)
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "2e0283fd805f1b04b52d8c52",
+      credential: "/KnbRwWE4WiSCLop",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "2e0283fd805f1b04b52d8c52",
+      credential: "/KnbRwWE4WiSCLop",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "2e0283fd805f1b04b52d8c52",
+      credential: "/KnbRwWE4WiSCLop",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "2e0283fd805f1b04b52d8c52",
+      credential: "/KnbRwWE4WiSCLop",
+    },
+  ],
 };
   const getConversation = async () => {
     try {
