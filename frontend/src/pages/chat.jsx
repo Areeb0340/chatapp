@@ -200,9 +200,13 @@ const STUN_SERVERS = {
       }
     };
 
-    pc.onicecandidateerror = (err) => {
-      console.error("❌ ICE candidate error:", err);
-    };
+   pc.oniceconnectionstatechange = () => {
+    console.log("🌐 ICE connection state:", pc.iceConnectionState);
+    if (pc.iceConnectionState === "failed") {
+      console.warn("⚠️ ICE connection failed, retrying...");
+      pc.restartIce();
+    }
+  };
 
     pc.onicegatheringstatechange = () => {
       console.log("🔎 ICE gathering state:", pc.iceGatheringState);
@@ -234,7 +238,7 @@ const STUN_SERVERS = {
       }
 
       // Attach only if not already attached or different stream
-      if (!remoteVideoRef.current.srcObject || remoteVideoRef.current.srcObject.id !== remoteStream.id) {
+      if (!remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
         remoteVideoRef.current.autoplay = true;
         remoteVideoRef.current.playsInline = true;
@@ -249,10 +253,17 @@ const STUN_SERVERS = {
         console.log("ℹ️ Remote stream already set, skipping reset");
       }
 
-      remoteStream.oninactive = () => console.log("❌ Remote stream ended");
+     remoteVideoRef.current.onloadedmetadata = async () => {
+        try {
+          await remoteVideoRef.current.play();
+          console.log("✅ Remote video playing");
+        } catch (err) {
+          console.warn("⚠️ Remote video play() failed:", err);
+        }
+      };
+      return pc;
     };
 
-    return pc;
   };
 
   // -------------------- Start Video Call (caller) --------------------
