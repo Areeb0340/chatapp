@@ -29,27 +29,46 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false);
   
+// const STUN_SERVERS = {
+//   iceServers: [
+//     { urls: "stun:stun.l.google.com:19302" },
+//     {
+//       urls: [
+//             "stun:stun.relay.metered.ca:80", 
+//         "turn:global.relay.metered.ca:80",
+//         "turn:global.relay.metered.ca:443",
+//         "turns:global.relay.metered.ca:443?transport=tcp",
+//       ],
+//       username: "2e0283fd805f1b04b52d8c52",
+//       credential: "/KnbRwWE4WiSCLop",
+//     },
+//     {
+//       urls: "turn:relay1.expressturn.com:3478",
+//       username: "efree",
+//       credential: "efree",
+//     },
+//   ],
+// };
 const STUN_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    {
-      urls: [
-            "stun:stun.relay.metered.ca:80", 
-        "turn:global.relay.metered.ca:80",
-        "turn:global.relay.metered.ca:443",
-        "turns:global.relay.metered.ca:443?transport=tcp",
-      ],
-      username: "2e0283fd805f1b04b52d8c52",
-      credential: "/KnbRwWE4WiSCLop",
-    },
-    {
-      urls: "turn:relay1.expressturn.com:3478",
-      username: "efree",
-      credential: "efree",
-    },
-  ],
+iceServers: [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun3.l.google.com:19302" },
+  { urls: "stun:stun4.l.google.com:19302" },
+  {
+    urls: [
+      "turn:relay1.expressturn.com:3478",
+      "turn:relay2.expressturn.com:3478",
+    ],
+    username: "efree",
+    credential: "efree",
+  },
+],
 };
   const getConversation = async () => {
+
+
     try {
       let Conversation = await api.get(`/conversation/${id}`);
       setConversations(Conversation.data?.conversation);
