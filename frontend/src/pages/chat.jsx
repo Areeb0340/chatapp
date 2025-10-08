@@ -29,46 +29,27 @@ const Chat = ({ id, groups, selectedGroup }) => {
   const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
   const [isCalling, setIsCalling] = useState(false);
   
-// const STUN_SERVERS = {
-//   iceServers: [
-//     { urls: "stun:stun.l.google.com:19302" },
-//     {
-//       urls: [
-//             "stun:stun.relay.metered.ca:80", 
-//         "turn:global.relay.metered.ca:80",
-//         "turn:global.relay.metered.ca:443",
-//         "turns:global.relay.metered.ca:443?transport=tcp",
-//       ],
-//       username: "2e0283fd805f1b04b52d8c52",
-//       credential: "/KnbRwWE4WiSCLop",
-//     },
-//     {
-//       urls: "turn:relay1.expressturn.com:3478",
-//       username: "efree",
-//       credential: "efree",
-//     },
-//   ],
-// };
 const STUN_SERVERS = {
-iceServers: [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "stun:stun2.l.google.com:19302" },
-  { urls: "stun:stun3.l.google.com:19302" },
-  { urls: "stun:stun4.l.google.com:19302" },
-  {
-    urls: [
-      "turn:relay1.expressturn.com:3478",
-      "turn:relay2.expressturn.com:3478",
-    ],
-    username: "efree",
-    credential: "efree",
-  },
-],
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: [
+            "stun:stun.relay.metered.ca:80", 
+        "turn:global.relay.metered.ca:80",
+        "turn:global.relay.metered.ca:443",
+        "turns:global.relay.metered.ca:443?transport=tcp",
+      ],
+      username: "2e0283fd805f1b04b52d8c52",
+      credential: "/KnbRwWE4WiSCLop",
+    },
+    {
+      urls: "turn:relay1.expressturn.com:3478",
+      username: "efree",
+      credential: "efree",
+    },
+  ],
 };
   const getConversation = async () => {
-
-
     try {
       let Conversation = await api.get(`/conversation/${id}`);
       setConversations(Conversation.data?.conversation);
@@ -243,33 +224,35 @@ iceServers: [
     };
 
     // remote track handling
-   pc.ontrack = (event) => {
+pc.ontrack = (event) => {
   console.log("📹 Remote track received:", event.streams);
 
-  const [remoteStream] = event.streams;
+  const [remoteStream] = event.streams || [];
   if (!remoteStream) {
-    console.warn("⚠️ No remote stream in ontrack");
+    console.warn("⚠️ No remote stream found in ontrack event");
     return;
   }
 
-  // 🔥 Always attach stream freshly
   if (remoteVideoRef.current) {
     remoteVideoRef.current.srcObject = remoteStream;
     remoteVideoRef.current.autoplay = true;
     remoteVideoRef.current.playsInline = true;
     remoteVideoRef.current.muted = false;
 
-    remoteVideoRef.current
-      .play()
-      .then(() => console.log("✅ Remote video started playing"))
-      .catch((err) => console.warn("⚠️ Remote video autoplay blocked:", err));
+    remoteVideoRef.current.onloadedmetadata = async () => {
+      try {
+        await remoteVideoRef.current.play();
+        console.log("✅ Remote video playing");
+      } catch (err) {
+        console.warn("⚠️ Remote video autoplay blocked:", err);
+      }
+    };
+  } else {
+    console.warn("⚠️ remoteVideoRef.current is null — can't attach remote stream yet");
   }
-
-  // Detect when remote stream ends
-  remoteStream.oninactive = () =>
-    console.log("❌ Remote stream became inactive");
 };
-  }
+  };
+
   // -------------------- Start Video Call (caller) --------------------
   const startVideoCall = async () => {
   if (!id) return;
