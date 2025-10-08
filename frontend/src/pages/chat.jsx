@@ -224,102 +224,91 @@ const STUN_SERVERS = {
     };
 
     // remote track handling
-    pc.ontrack = (event) => {
-      console.log("📹 Remote track received (ontrack):", event.streams);
-      if (!remoteVideoRef.current) {
-        console.warn("⚠️ remoteVideoRef.current is null, can't attach stream");
-        return;
-      }
+   pc.ontrack = (event) => {
+  console.log("📹 Remote track received:", event.streams);
 
-      const [remoteStream] = event.streams || [];
-      if (!remoteStream) {
-        console.warn("⚠️ no remote stream in ontrack event");
-        return;
-      }
+  const [remoteStream] = event.streams;
+  if (!remoteStream) {
+    console.warn("⚠️ No remote stream in ontrack");
+    return;
+  }
 
-      // Attach only if not already attached or different stream
-      if (!remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        remoteVideoRef.current.autoplay = true;
-        remoteVideoRef.current.playsInline = true;
-        remoteVideoRef.current.muted = false;
+  // 🔥 Always attach stream freshly
+  if (remoteVideoRef.current) {
+    remoteVideoRef.current.srcObject = remoteStream;
+    remoteVideoRef.current.autoplay = true;
+    remoteVideoRef.current.playsInline = true;
+    remoteVideoRef.current.muted = false;
 
-        remoteVideoRef.current.play().catch((err) => {
-          console.warn("⚠️ Remote video autoplay blocked:", err);
-        });
+    remoteVideoRef.current
+      .play()
+      .then(() => console.log("✅ Remote video started playing"))
+      .catch((err) => console.warn("⚠️ Remote video autoplay blocked:", err));
+  }
 
-        console.log("✅ Remote stream attached to remoteVideoRef");
-      } else {
-        console.log("ℹ️ Remote stream already set, skipping reset");
-      }
-
-     remoteVideoRef.current.onloadedmetadata = async () => {
-        try {
-          await remoteVideoRef.current.play();
-          console.log("✅ Remote video playing");
-        } catch (err) {
-          console.warn("⚠️ Remote video play() failed:", err);
-        }
-      };
-    };
-    return pc;
-
-  };
-
+  // Detect when remote stream ends
+  remoteStream.oninactive = () =>
+    console.log("❌ Remote stream became inactive");
+};
+  }
   // -------------------- Start Video Call (caller) --------------------
   const startVideoCall = async () => {
-    if (!id) return;
-    try {
-      console.log("📞 Starting video call to:", id);
-      const socket = socketRef.current;
-      const pc = createPeerConnection(id);
+  if (!id) return;
+  try {
+    console.log("📞 Starting video call to:", id);
+    const socket = socketRef.current;
 
-      // get local media
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      console.log("🎥 Caller local stream tracks:", localStream.getTracks());
-      localStreamRef.current = localStream;
+    // 🔧 create peer connection
+    createPeerConnection(id);
+    const pc = pcRef.current; // ✅ ensure reference from ref
 
-      // attach local preview
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-        localVideoRef.current.muted = true;
-        localVideoRef.current.autoplay = true;
-        localVideoRef.current.playsInline = true;
-        localVideoRef.current.play().catch((err) => {
-          console.warn("⚠️ Local video autoplay blocked:", err);
-        });
-        console.log("✅ Local stream attached to localVideoRef (caller)");
-      }
-
-      // add local tracks to peer
-      localStream.getTracks().forEach((track) => {
-        console.log("➕ Adding local track (caller):", track.kind);
-        pc.addTrack(track, localStream);
-      });
-
-      setIsCalling(true);
-      setInCallWith(id);
-
-      // create offer & set local description
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      console.log("📤 Offer created & local description set");
-
-      socket.emit("call-user", {
-        from: state.user.user_id,
-        to: id,
-        offer,
-      });
-      console.log("📤 Call-user event emitted:", { from: state.user.user_id, to: id });
-    } catch (err) {
-      console.error("❌ startVideoCall error:", err);
-      cleanupCall();
+    if (!pc) {
+      console.error("❌ PeerConnection not created!");
+      return;
     }
-  };
 
+    // get local media
+    const localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    console.log("🎥 Caller local stream tracks:", localStream.getTracks());
+    localStreamRef.current = localStream;
+
+    // attach local preview
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.muted = true;
+      await localVideoRef.current.play().catch((err) =>
+        console.warn("⚠️ Local video autoplay blocked:", err)
+      );
+      console.log("✅ Local stream attached to localVideoRef (caller)");
+    }
+
+    // ✅ add local tracks safely
+    localStream.getTracks().forEach((track) => {
+      console.log("➕ Adding local track (caller):", track.kind);
+      pc.addTrack(track, localStream);
+    });
+
+    setIsCalling(true);
+    setInCallWith(id);
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    console.log("📤 Offer created & local description set");
+
+    socket.emit("call-user", {
+      from: state.user.user_id,
+      to: id,
+      offer,
+    });
+    console.log("📤 Call-user event emitted:", { from: state.user.user_id, to: id });
+  } catch (err) {
+    console.error("❌ startVideoCall error:", err);
+    cleanupCall();
+  }
+};
   // -------------------- Accept incoming call (callee) --------------------
   const acceptCall = async () => {
     if (!incomingCall) return;
