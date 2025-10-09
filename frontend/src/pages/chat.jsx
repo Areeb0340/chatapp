@@ -33,19 +33,9 @@ const STUN_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     {
-      urls: [
-            "stun:stun.relay.metered.ca:80", 
-        "turn:global.relay.metered.ca:80",
-        "turn:global.relay.metered.ca:443",
-        "turns:global.relay.metered.ca:443?transport=tcp",
-      ],
-      username: "2e0283fd805f1b04b52d8c52",
-      credential: "/KnbRwWE4WiSCLop",
-    },
-    {
-      urls: "turn:relay1.expressturn.com:3478",
-      username: "efree",
-      credential: "efree",
+      urls: "turn:relay.metered.ca:80",
+      username: "openai",
+      credential: "openai123",
     },
   ],
 };
@@ -223,7 +213,7 @@ const createPeerConnection = (remoteUserId) => {
       remoteVideoRef.current.srcObject = remoteStream;
       remoteVideoRef.current.autoplay = true;
       remoteVideoRef.current.playsInline = true;
-      remoteVideoRef.current.muted = false;
+      remoteVideoRef.current.muted = true;
       remoteVideoRef.current.onloadedmetadata = async () => {
         try {
           await remoteVideoRef.current.play();
