@@ -31,22 +31,34 @@ const Chat = ({ id, groups, selectedGroup }) => {
   
 const STUN_SERVERS = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }, // Google free STUN
+    // ✅ Google STUN (fast + reliable)
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
 
-    // ✅ Free TURN server (working)
+    // ✅ Free TURN server 1 (UDP + TCP)
     {
-      urls: "turn:relay1.expressturn.com:3478",
+      urls: [
+        "turn:relay1.expressturn.com:3478?transport=udp",
+        "turn:relay1.expressturn.com:3478?transport=tcp"
+      ],
       username: "efree",
       credential: "efree",
     },
 
-    // ✅ Backup TURN server (TCP)
+    // ✅ Free TURN server 2 (backup)
     {
-      urls: "turn:turn.anyfirewall.com:443?transport=tcp",
-      username: "webrtc@live.com",
-      credential: "webrtcdemo",
-    },
-  ],}
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp"
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    }
+  ],
+  iceCandidatePoolSize: 10, // Helps ICE gather candidates faster
+};
+
   const getConversation = async () => {
     try {
       let Conversation = await api.get(`/conversation/${id}`);
