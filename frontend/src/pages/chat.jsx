@@ -31,14 +31,22 @@ const Chat = ({ id, groups, selectedGroup }) => {
   
 const STUN_SERVERS = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun.l.google.com:19302" }, // Google free STUN
+
+    // ✅ Free TURN server (working)
     {
-      urls: "turn:relay.metered.ca:80",
-      username: "openai",
-      credential: "openai123",
+      urls: "turn:relay1.expressturn.com:3478",
+      username: "efree",
+      credential: "efree",
     },
-  ],
-};
+
+    // ✅ Backup TURN server (TCP)
+    {
+      urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+      username: "webrtc@live.com",
+      credential: "webrtcdemo",
+    },
+  ],}
   const getConversation = async () => {
     try {
       let Conversation = await api.get(`/conversation/${id}`);
@@ -247,6 +255,7 @@ const startVideoCall = async () => {
       video: true,
       audio: true,
     });
+      console.log("✅ Camera OK:", localStream);
     console.log("🎥 Caller local stream tracks:", localStream.getTracks());
     localStreamRef.current = localStream;
 
@@ -305,6 +314,8 @@ const acceptCall = async () => {
       video: true,
       audio: true,
     });
+    
+    
     console.log("🎥 Callee local stream tracks:", localStream.getTracks());
     localStreamRef.current = localStream;
 
