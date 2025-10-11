@@ -194,14 +194,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on("ice-candidate", ({ from, to, candidate }) => {
-    const targetSocket = onlineUsers.get(to);
-      console.log("📡 ice-candidate event:", { from, to, hasTarget: !!targetSocket, candidate: !!candidate });
-    if (targetSocket) {
+socket.on("ice-candidate", ({ from, to, candidate }) => {
+  const targetSocket = onlineUsers.get(to);
+  try {
+    console.log("📡 ICE candidate event:", { from, to, hasTarget: !!targetSocket });
+    if (targetSocket && candidate) {
       io.to(targetSocket).emit("ice-candidate", { from, candidate });
-      console.log(`🔄 ICE candidate exchanged between ${from} and ${to}`);
+      console.log(`🔄 ICE candidate sent from ${from} to ${to}`);
     }
-  });
+  } catch (err) {
+    console.error("❌ ICE candidate error:", err);
+  }
+});
+
 
   socket.on("disconnect", (reason) => {
     for (let [userId, id] of onlineUsers.entries()) {
@@ -212,8 +217,21 @@ io.on('connection', (socket) => {
     }
     console.log("Client disconnected:", socket.id, "Reason:", reason);
   });
+  socket.on("signal", ({ from, to, signal }) => {
+      try {
+        const targetSocket = onlineUsers.get(to);
+        console.log("🔁 signal event:", { from, to, hasTarget: !!targetSocket });
+        if (targetSocket) {
+          io.to(targetSocket).emit("signal", { from, signal });
+          console.log(`🔁 Signal forwarded ${from} -> ${to}`);
+        } else {
+          console.warn("⚠️ Signal: target not online:", to);
+        }
+      } catch (err) {
+        console.error("❌ Signal forward error:", err);
+      }
+    });
 });
-
 
  
 const __dirname = path.resolve();
