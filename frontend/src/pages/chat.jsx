@@ -11,6 +11,7 @@ import Lottie from "lottie-react";
 import robotAnimation from "./chatbot.json";
 import SimplePeer from "simple-peer";
 
+
 const Chat = ({ id, groups, selectedGroup }) => {
   const { state } = useContext(GlobalContext);
   const [message, setMessage] = useState("");
