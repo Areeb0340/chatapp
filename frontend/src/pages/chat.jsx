@@ -10,6 +10,7 @@ import EmojiPicker from "emoji-picker-react";
 import Lottie from "lottie-react";
 import robotAnimation from "./chatbot.json";
 import SimplePeer from "simple-peer";
+// import peer from "simple-peer";
 
 
 const Chat = ({ id, groups, selectedGroup }) => {
