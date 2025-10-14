@@ -259,22 +259,33 @@ const Chat = ({ id, groups, selectedGroup }) => {
       const socket = socketRef.current;
 
       // get local media
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+    const localStream = await navigator.mediaDevices.getUserMedia({
+  video: {
+    width: { ideal: 640 },
+    height: { ideal: 480 },
+    frameRate: { ideal: 24, max: 30 }
+  },
+  audio: true,
+});
       localStreamRef.current = localStream;
 
       // attach local preview
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-        localVideoRef.current.muted = true;
-        localVideoRef.current.autoplay = true;
-        localVideoRef.current.playsInline = true;
-        await localVideoRef.current.play().catch((err) =>
-          console.warn("⚠️ Local video autoplay blocked:", err)
-        );
-      }
+     if (localVideoRef.current) {
+  const videoEl = localVideoRef.current;
+  videoEl.srcObject = localStream;
+
+  videoEl.onloadedmetadata = async () => {
+    try {
+      videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      await videoEl.play();
+      console.log("✅ Local video started successfully");
+    } catch (err) {
+      console.warn("⚠️ Local video autoplay blocked:", err);
+    }
+  };
+}
 
       // create peer initiator and send its initial signal(s) via server
       await createPeerAsCaller(id, localStream);
@@ -295,22 +306,33 @@ const Chat = ({ id, groups, selectedGroup }) => {
       console.log("📞 Accepting call from:", from);
 
       // get local media
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+   const localStream = await navigator.mediaDevices.getUserMedia({
+  video: {
+    width: { ideal: 640 },
+    height: { ideal: 480 },
+    frameRate: { ideal: 24, max: 30 }
+  },
+  audio: true,
+});
       localStreamRef.current = localStream;
 
       // attach local preview
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-        localVideoRef.current.muted = true;
-        localVideoRef.current.autoplay = true;
-        localVideoRef.current.playsInline = true;
-        await localVideoRef.current.play().catch((err) =>
-          console.warn("⚠️ Local video autoplay blocked:", err)
-        );
-      }
+  const videoEl = localVideoRef.current;
+  videoEl.srcObject = localStream;
+
+  videoEl.onloadedmetadata = async () => {
+    try {
+      videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      await videoEl.play();
+      console.log("✅ Local video started successfully");
+    } catch (err) {
+      console.warn("⚠️ Local video autoplay blocked:", err);
+    }
+  };
+}
 
       // create peer as callee and pass the caller's signal (offer)
       await createPeerAsCallee(signal, from, localStream);
