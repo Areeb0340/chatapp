@@ -9,7 +9,8 @@ import { AudioRecorder } from "react-audio-voice-recorder";
 import EmojiPicker from "emoji-picker-react";
 import Lottie from "lottie-react";
 import robotAnimation from "./chatbot.json";
-import SimplePeer from "simple-peer";
+import SimplePeer from "simple-peer/simplepeer.min.js";
+
 // import peer from "simple-peer";
 
 
@@ -166,7 +167,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
     // initiator: true
     const peer = new SimplePeer({
       initiator: true,
-      trickle: true,
+      trickle: false,
       stream: localStream,
       config: STUN_SERVERS,
     });
@@ -206,7 +207,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
     // initiator: false
     const peer = new SimplePeer({
       initiator: false,
-      trickle: true,
+      trickle: false,
       stream: localStream,
       config: STUN_SERVERS,
     });
