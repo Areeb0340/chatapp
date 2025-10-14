@@ -15,25 +15,6 @@ import SimplePeer from "simple-peer/simplepeer.min.js";
 
 
 const Chat = ({ id, groups, selectedGroup }) => {
-  const { state } = useContext(GlobalContext);
-  const [message, setMessage] = useState("");
-  const [conversations, setConversations] = useState([]);
-  const [userDetail, setUserDetail] = useState({});
-  const [menuOpen, setMenuOpen] = useState(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [voiceBlob, setVoiceBlob] = useState(null);
-  const [isGroup, setIsGroup] = useState(false);
-
-  // WebRTC / Socket refs & states
-  const socketRef = useRef(null);
-  const peerRef = useRef(null); // simple-peer instance
-  const localStreamRef = useRef(null);
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const [incomingCall, setIncomingCall] = useState(null); // { from, signal }
-  const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
-  const [isCalling, setIsCalling] = useState(false);
-
   const STUN_SERVERS = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -57,6 +38,25 @@ const Chat = ({ id, groups, selectedGroup }) => {
       },
     ],
   };
+  const { state } = useContext(GlobalContext);
+  const [message, setMessage] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [userDetail, setUserDetail] = useState({});
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [voiceBlob, setVoiceBlob] = useState(null);
+  const [isGroup, setIsGroup] = useState(false);
+  
+  // WebRTC / Socket refs & states
+  const socketRef = useRef(null);
+  const peerRef = useRef(null); // simple-peer instance
+  const localStreamRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const [incomingCall, setIncomingCall] = useState(null); // { from, signal }
+  const [inCallWith, setInCallWith] = useState(null); // userId of current call peer
+  const [isCalling, setIsCalling] = useState(false);
+
 
   // --- conversation / user fetchers (unchanged) ---
   const getConversation = async () => {
@@ -265,7 +265,10 @@ const Chat = ({ id, groups, selectedGroup }) => {
     height: { ideal: 480 },
     frameRate: { ideal: 24, max: 30 }
   },
-  audio: true,
+   audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+  }
 });
       localStreamRef.current = localStream;
 
@@ -312,7 +315,10 @@ const Chat = ({ id, groups, selectedGroup }) => {
     height: { ideal: 480 },
     frameRate: { ideal: 24, max: 30 }
   },
-  audio: true,
+    audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+  }
 });
       localStreamRef.current = localStream;
 
