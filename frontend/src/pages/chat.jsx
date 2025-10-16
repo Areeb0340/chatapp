@@ -171,6 +171,13 @@ const Chat = ({ id, groups, selectedGroup }) => {
       trickle: false,
       stream: localStream,
       config: STUN_SERVERS,
+      sdpTransform: (sdp) => {
+    // reduce resolution for smoother call
+    return sdp.replace(
+      /a=fmtp:\d+ .*/g,
+      "a=fmtp:96 x-google-min-bitrate=300;x-google-max-bitrate=800;x-google-start-bitrate=500"
+    );
+  },
     });
 
     peer.on("signal", (signal) => {
@@ -211,6 +218,13 @@ const Chat = ({ id, groups, selectedGroup }) => {
       trickle: false,
       stream: localStream,
       config: STUN_SERVERS,
+      sdpTransform: (sdp) => {
+    // reduce resolution for smoother call
+    return sdp.replace(
+      /a=fmtp:\d+ .*/g,
+      "a=fmtp:96 x-google-min-bitrate=300;x-google-max-bitrate=800;x-google-start-bitrate=500"
+    );
+  },
     });
 
     peer.on("signal", (signal) => {
