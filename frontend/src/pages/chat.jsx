@@ -37,6 +37,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
         credential: "openrelayproject",
       },
     ],
+      iceCandidatePoolSize: 10,
   };
   const { state } = useContext(GlobalContext);
   const [message, setMessage] = useState("");
