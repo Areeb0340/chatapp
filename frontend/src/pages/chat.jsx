@@ -222,17 +222,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
       trickle: false,
       stream: localStream,
       config: STUN_SERVERS,
-  sdpTransform: (sdp) => {
-    return sdp
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('a=fmtp:')) {
-          return line + ';x-google-min-bitrate=300;x-google-max-bitrate=900;x-google-start-bitrate=500';
-        }
-        return line;
-      })
-      .join('\n');
-  },
+ 
     });
 
     peer.on("signal", (signal) => {
