@@ -200,8 +200,8 @@ const Chat = ({ id, groups, selectedGroup }) => {
         remoteVideoRef.current.srcObject = stream;
         remoteVideoRef.current.autoplay = true;
         remoteVideoRef.current.playsInline = true;
-        remoteVideoRef.current.muted = false;
-        remoteVideoRef.current.play().catch((e) => console.warn("❌ remote play error", e));
+        remoteVideoRef.current.volume = 1.0;
+        remoteVideoRef.current.play().catch(() => {});
       }
     });
 
@@ -242,7 +242,8 @@ const Chat = ({ id, groups, selectedGroup }) => {
         remoteVideoRef.current.autoplay = true;
         remoteVideoRef.current.playsInline = true;
         remoteVideoRef.current.muted = false;
-        remoteVideoRef.current.play().catch((e) => console.warn("❌ remote play error", e));
+         remoteVideoRef.current.volume = 1.0;
+       remoteVideoRef.current.play().catch(() => {});
       }
     });
 
@@ -286,22 +287,21 @@ const Chat = ({ id, groups, selectedGroup }) => {
       localStreamRef.current = localStream;
 
       // attach local preview
-     if (localVideoRef.current) {
+   if (localVideoRef.current) {
   const videoEl = localVideoRef.current;
   videoEl.srcObject = localStream;
+  videoEl.muted = true; // so no echo
+  videoEl.autoplay = true;
+  videoEl.playsInline = true;
 
-  videoEl.onloadedmetadata = async () => {
-    try {
-      videoEl.muted = true;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      await videoEl.play();
-      console.log("✅ Local video started successfully");
-    } catch (err) {
-      console.warn("⚠️ Local video autoplay blocked:", err);
-    }
-  };
+  // ✅ Force play manually in case autoplay policy blocks it
+  setTimeout(() => {
+    videoEl.play().catch((err) => {
+      console.warn("⚠️ Could not autoplay local video:", err);
+    });
+  }, 300);
 }
+
 
       // create peer initiator and send its initial signal(s) via server
       await createPeerAsCaller(id, localStream);
@@ -339,18 +339,16 @@ const Chat = ({ id, groups, selectedGroup }) => {
       if (localVideoRef.current) {
   const videoEl = localVideoRef.current;
   videoEl.srcObject = localStream;
+  videoEl.muted = true; // so no echo
+  videoEl.autoplay = true;
+  videoEl.playsInline = true;
 
-  videoEl.onloadedmetadata = async () => {
-    try {
-      videoEl.muted = true;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      await videoEl.play();
-      console.log("✅ Local video started successfully");
-    } catch (err) {
-      console.warn("⚠️ Local video autoplay blocked:", err);
-    }
-  };
+  // ✅ Force play manually in case autoplay policy blocks it
+  setTimeout(() => {
+    videoEl.play().catch((err) => {
+      console.warn("⚠️ Could not autoplay local video:", err);
+    });
+  }, 300);
 }
 
       // create peer as callee and pass the caller's signal (offer)
