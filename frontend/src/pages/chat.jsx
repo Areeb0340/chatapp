@@ -265,104 +265,115 @@ const Chat = ({ id, groups, selectedGroup }) => {
     return peer;
   };
 
-  // -------------------- Start Video Call (caller) --------------------
-  const startVideoCall = async () => {
-    if (!id) return;
-    try {
-      console.log("📞 Starting video call to:", id);
-      const socket = socketRef.current;
+const startVideoCall = async () => {
+  if (!id) return;
+  try {
+    console.log("📞 Starting video call to:", id);
+    const socket = socketRef.current;
 
-      // get local media
+    // ✅ Get local media with recommended constraints
     const localStream = await navigator.mediaDevices.getUserMedia({
-  video: {
-    width: { ideal: 640 },
-    height: { ideal: 480 },
-    frameRate: { ideal: 24, max: 30 }
-  },
-   audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
-  }
-});
-      localStreamRef.current = localStream;
-
-      // attach local preview
-   if (localVideoRef.current) {
-  const videoEl = localVideoRef.current;
-  videoEl.srcObject = localStream;
-  videoEl.muted = true; // so no echo
-  videoEl.autoplay = true;
-  videoEl.playsInline = true;
-
-  // ✅ Force play manually in case autoplay policy blocks it
-  setTimeout(() => {
-    videoEl.play().catch((err) => {
-      console.warn("⚠️ Could not autoplay local video:", err);
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 24, max: 30 }
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+      }
     });
-  }, 300);
-}
 
+    localStreamRef.current = localStream;
 
-      // create peer initiator and send its initial signal(s) via server
-      await createPeerAsCaller(id, localStream);
+    // ✅ Attach local preview safely
+    if (localVideoRef.current) {
+      const videoEl = localVideoRef.current;
+      videoEl.srcObject = localStream;
+      videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
 
-      setIsCalling(true);
-      setInCallWith(id);
-    } catch (err) {
-      console.error("❌ startVideoCall error:", err);
-      cleanupCall();
+      // 🔄 Force refresh
+      videoEl.load();
+
+      // 🎬 Try multiple play attempts
+      const tryPlay = () => {
+        videoEl.play().catch((err) => {
+          console.warn("⚠️ Local video autoplay blocked, retrying...", err);
+          setTimeout(() => videoEl.play().catch(() => {}), 400);
+        });
+      };
+      setTimeout(tryPlay, 100);
     }
-  };
 
-  // -------------------- Accept incoming call (callee) --------------------
-  const acceptCall = async () => {
-    if (!incomingCall) return;
-    const { from, signal } = incomingCall;
-    try {
-      console.log("📞 Accepting call from:", from);
+    // ✅ Create peer as caller
+    await createPeerAsCaller(id, localStream);
 
-      // get local media
-   const localStream = await navigator.mediaDevices.getUserMedia({
-  video: {
-    width: { ideal: 640 },
-    height: { ideal: 480 },
-    frameRate: { ideal: 24, max: 30 }
-  },
-    audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
+    // ✅ Trigger UI
+    setIsCalling(true);
+    setInCallWith(id);
+  } catch (err) {
+    console.error("❌ startVideoCall error:", err);
+    cleanupCall();
   }
-});
-      localStreamRef.current = localStream;
+};
 
-      // attach local preview
-      if (localVideoRef.current) {
-  const videoEl = localVideoRef.current;
-  videoEl.srcObject = localStream;
-  videoEl.muted = true; // so no echo
-  videoEl.autoplay = true;
-  videoEl.playsInline = true;
 
-  // ✅ Force play manually in case autoplay policy blocks it
-  setTimeout(() => {
-    videoEl.play().catch((err) => {
-      console.warn("⚠️ Could not autoplay local video:", err);
+const acceptCall = async () => {
+  if (!incomingCall) return;
+  const { from, signal } = incomingCall;
+
+  try {
+    console.log("📞 Accepting call from:", from);
+
+    // ✅ Get local media
+    const localStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 24, max: 30 }
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+      }
     });
-  }, 300);
-}
 
-      // create peer as callee and pass the caller's signal (offer)
-      await createPeerAsCallee(signal, from, localStream);
+    localStreamRef.current = localStream;
 
-      setInCallWith(from);
-      setIsCalling(true);
-      setIncomingCall(null);
-    } catch (err) {
-      console.error("❌ acceptCall error:", err);
-      cleanupCall();
-      setIncomingCall(null);
+    // ✅ Attach local preview safely
+    if (localVideoRef.current) {
+      const videoEl = localVideoRef.current;
+      videoEl.srcObject = localStream;
+      videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+
+      videoEl.load();
+
+      const tryPlay = () => {
+        videoEl.play().catch((err) => {
+          console.warn("⚠️ Local video autoplay blocked, retrying...", err);
+          setTimeout(() => videoEl.play().catch(() => {}), 400);
+        });
+      };
+      setTimeout(tryPlay, 100);
     }
-  };
+
+    // ✅ Create peer as callee and use caller's offer
+    await createPeerAsCallee(signal, from, localStream);
+
+    // ✅ Update UI
+    setInCallWith(from);
+    setIsCalling(true);
+    setIncomingCall(null);
+  } catch (err) {
+    console.error("❌ acceptCall error:", err);
+    cleanupCall();
+    setIncomingCall(null);
+  }
+};
 
   // -------------------- Decline incoming call --------------------
   const declineCall = () => {
