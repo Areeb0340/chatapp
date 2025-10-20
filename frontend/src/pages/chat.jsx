@@ -294,8 +294,8 @@ const startVideoCall = async () => {
       videoEl.autoplay = true;
       videoEl.playsInline = true;
 
-      // 🔄 Force refresh
-      videoEl.load();
+      // Force refresh
+      // videoEl.load();
 
       // 🎬 Try multiple play attempts
       const tryPlay = () => {
@@ -350,7 +350,7 @@ const acceptCall = async () => {
       videoEl.autoplay = true;
       videoEl.playsInline = true;
 
-      videoEl.load();
+      // videoEl.load();
 
       const tryPlay = () => {
         videoEl.play().catch((err) => {
@@ -361,7 +361,7 @@ const acceptCall = async () => {
       setTimeout(tryPlay, 100);
     }
 
-    // ✅ Create peer as callee and use caller's offer
+
     await createPeerAsCallee(signal, from, localStream);
 
     // ✅ Update UI
@@ -375,13 +375,12 @@ const acceptCall = async () => {
   }
 };
 
-  // -------------------- Decline incoming call --------------------
+
   const declineCall = () => {
     setIncomingCall(null);
-    // Optionally notify caller that call was declined (not implemented here)
+
   };
 
-  // -------------------- End call & cleanup --------------------
   const endCall = () => {
     cleanupCall();
   };
