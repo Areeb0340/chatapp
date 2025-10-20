@@ -518,7 +518,7 @@ const acceptCall = async () => {
       {isCalling && (
         <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
           <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-black" onLoadedMetadata={(e) => e.target.play().catch(() => {})} />
-          <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 rounded-lg overflow-hidden border-2 border-white">
+          <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 rounded-lg overflow-hidden border-2 border-white z-50">
             <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover bg-black" onLoadedMetadata={(e) => e.target.play().catch(() => {})} />
           </div>
           <button onClick={endCall} className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white text-lg font-semibold hover:bg-red-700 transition">End Call</button>
