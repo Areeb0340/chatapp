@@ -160,7 +160,6 @@ const Chat = ({ id, groups, selectedGroup }) => {
       socket.close();
       cleanupCall();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // -------------------- simple-peer helpers --------------------
@@ -241,7 +240,7 @@ const Chat = ({ id, groups, selectedGroup }) => {
         remoteVideoRef.current.srcObject = stream;
         remoteVideoRef.current.autoplay = true;
         remoteVideoRef.current.playsInline = true;
-        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.muted = true;
          remoteVideoRef.current.volume = 1.0;
        remoteVideoRef.current.play().catch(() => {});
       }
@@ -273,11 +272,12 @@ const startVideoCall = async () => {
 
     // ✅ Get local media with recommended constraints
     const localStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        frameRate: { ideal: 24, max: 30 }
-      },
+      // video: {
+      //   width: { ideal: 640 },
+      //   height: { ideal: 480 },
+      //   frameRate: { ideal: 24, max: 30 }
+      // },
+      video:true,
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
@@ -329,11 +329,12 @@ const acceptCall = async () => {
 
     // ✅ Get local media
     const localStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        frameRate: { ideal: 24, max: 30 }
-      },
+      // video: {
+      //   width: { ideal: 640 },
+      //   height: { ideal: 480 },
+      //   frameRate: { ideal: 24, max: 30 }
+      // },
+      video:true,
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
