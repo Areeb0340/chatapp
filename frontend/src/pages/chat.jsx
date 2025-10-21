@@ -264,119 +264,137 @@ const Chat = ({ id, groups, selectedGroup }) => {
     return peer;
   };
 
-const startVideoCall = async () => {
-  if (!id) return;
-  try {
-    console.log("📞 Starting video call to:", id);
-    const socket = socketRef.current;
+ const startVideoCall = async () => {
+    if (!id) return;
+    try {
+      console.log("📞 Starting video call to:", id);
+      
+      // ✅ Get local media with better error handling
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 24, max: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
 
-    // ✅ Get local media with recommended constraints
-    const localStream = await navigator.mediaDevices.getUserMedia({
-      // video: {
-      //   width: { ideal: 640 },
-      //   height: { ideal: 480 },
-      //   frameRate: { ideal: 24, max: 30 }
-      // },
-      video:true,
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
+      localStreamRef.current = localStream;
+
+      // ✅ DEBUG: Check if we got video tracks
+      const videoTracks = localStream.getVideoTracks();
+      console.log("🎥 Video tracks:", videoTracks.length);
+      if (videoTracks.length > 0) {
+        console.log("📹 Video track settings:", videoTracks[0].getSettings());
       }
-    });
 
-    localStreamRef.current = localStream;
+      // ✅ Attach local preview with better handling
+      if (localVideoRef.current) {
+        const videoEl = localVideoRef.current;
+        videoEl.srcObject = localStream;
+        videoEl.muted = true;
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
+        videoEl.controls = false;
 
-    // ✅ Attach local preview safely
-    if (localVideoRef.current) {
-      const videoEl = localVideoRef.current;
-      videoEl.srcObject = localStream;
-      videoEl.muted = true;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
+        // Force video element to load and play
+        videoEl.load();
 
-      // Force refresh
-      // videoEl.load();
-
-      // 🎬 Try multiple play attempts
-      const tryPlay = () => {
-        videoEl.play().catch((err) => {
-          console.warn("⚠️ Local video autoplay blocked, retrying...", err);
-          setTimeout(() => videoEl.play().catch(() => {}), 400);
-        });
-      };
-      setTimeout(tryPlay, 100);
-    }
-
-    // ✅ Create peer as caller
-    await createPeerAsCaller(id, localStream);
-
-    // ✅ Trigger UI
-    setIsCalling(true);
-    setInCallWith(id);
-  } catch (err) {
-    console.error("❌ startVideoCall error:", err);
-    cleanupCall();
-  }
-};
-
-
-const acceptCall = async () => {
-  if (!incomingCall) return;
-  const { from, signal } = incomingCall;
-
-  try {
-    console.log("📞 Accepting call from:", from);
-
-    // ✅ Get local media
-    const localStream = await navigator.mediaDevices.getUserMedia({
-      // video: {
-      //   width: { ideal: 640 },
-      //   height: { ideal: 480 },
-      //   frameRate: { ideal: 24, max: 30 }
-      // },
-      video:true,
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
+        const playPromise = videoEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("❌ Local video play failed:", error);
+            // Try again with user interaction
+            const tryAgain = () => {
+              videoEl.play().catch(e => console.warn("Still cannot play:", e));
+              document.removeEventListener('click', tryAgain);
+            };
+            document.addEventListener('click', tryAgain);
+          });
+        }
+      } else {
+        console.error("❌ localVideoRef is null");
       }
-    });
 
-    localStreamRef.current = localStream;
+      // ✅ Create peer as caller
+      await createPeerAsCaller(id, localStream);
 
-    // ✅ Attach local preview safely
-    if (localVideoRef.current) {
-      const videoEl = localVideoRef.current;
-      videoEl.srcObject = localStream;
-      videoEl.muted = true;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-
-      // videoEl.load();
-
-      const tryPlay = () => {
-        videoEl.play().catch((err) => {
-          console.warn("⚠️ Local video autoplay blocked, retrying...", err);
-          setTimeout(() => videoEl.play().catch(() => {}), 400);
-        });
-      };
-      setTimeout(tryPlay, 100);
+      // ✅ Update UI state
+      setIsCalling(true);
+      setInCallWith(id);
+      
+    } catch (err) {
+      console.error("❌ startVideoCall error:", err);
+      alert(`Video call failed: ${err.message}`);
+      cleanupCall();
     }
+  };
 
+  const acceptCall = async () => {
+    if (!incomingCall) return;
+    const { from, signal } = incomingCall;
 
-    await createPeerAsCallee(signal, from, localStream);
+    try {
+      console.log("📞 Accepting call from:", from);
 
-    // ✅ Update UI
-    setInCallWith(from);
-    setIsCalling(true);
-    setIncomingCall(null);
-  } catch (err) {
-    console.error("❌ acceptCall error:", err);
-    cleanupCall();
-    setIncomingCall(null);
-  }
-};
+      // ✅ Get local media
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 24, max: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
 
+      localStreamRef.current = localStream;
 
+      // ✅ DEBUG: Check video tracks
+      const videoTracks = localStream.getVideoTracks();
+      console.log("🎥 Callee video tracks:", videoTracks.length);
+
+      // ✅ Attach local preview
+      if (localVideoRef.current) {
+        const videoEl = localVideoRef.current;
+        videoEl.srcObject = localStream;
+        videoEl.muted = true;
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
+        videoEl.controls = false;
+
+        videoEl.load();
+
+        const playPromise = videoEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("❌ Local video play failed in acceptCall:", error);
+          });
+        }
+      }
+
+      // ✅ Create peer as callee
+      await createPeerAsCallee(signal, from, localStream);
+
+      // ✅ Update UI
+      setInCallWith(from);
+      setIsCalling(true);
+      setIncomingCall(null);
+      
+    } catch (err) {
+      console.error("❌ acceptCall error:", err);
+      alert(`Accept call failed: ${err.message}`);
+      cleanupCall();
+      setIncomingCall(null);
+    }
+  };
   const declineCall = () => {
     setIncomingCall(null);
 
@@ -385,24 +403,42 @@ const acceptCall = async () => {
   const endCall = () => {
     cleanupCall();
   };
-
+  // ✅ Improved cleanup function
   const cleanupCall = () => {
+    console.log("🧹 Cleaning up call...");
     try {
+      // Stop all media tracks
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log(`🛑 Stopped track: ${track.kind}`);
+        });
         localStreamRef.current = null;
       }
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      if (localVideoRef.current) localVideoRef.current.srcObject = null;
+      
+      // Clear video elements
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      
+      // Destroy peer connection
       if (peerRef.current) {
         try {
           peerRef.current.destroy();
-        } catch (e) {}
+          console.log("🔌 Peer connection destroyed");
+        } catch (e) {
+          console.warn("Peer destroy warning:", e);
+        }
         peerRef.current = null;
       }
     } catch (e) {
       console.warn("Cleanup error:", e);
     }
+    
+    // Reset state
     setIsCalling(false);
     setIncomingCall(null);
     setInCallWith(null);
@@ -504,36 +540,96 @@ const acceptCall = async () => {
     <div className="flex flex-col h-screen bg-gray-900 text-white relative">
       {/* Header */}
       <div className="p-3 md:p-4 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
-        <img src={isGroup ? selectedGroup?.groupPic || "/group-icon.png" : userDetail?.groupPic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"} alt="Profile" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-gray-600" />
+        <img 
+          src={isGroup ? selectedGroup?.groupPic || "/group-icon.png" : userDetail?.groupPic || "/0d64989794b1a4c9d89bff571d3d5842.jpg"} 
+          alt="Profile" 
+          className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-gray-600" 
+        />
         <h1 className="text-sm md:text-lg font-semibold truncate max-w-[150px] md:max-w-none">
           {isGroup ? selectedGroup?.groupName : `${userDetail?.firstName || ""} ${userDetail?.lastName || ""}`}
         </h1>
 
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={startVideoCall} className="p-2 bg-green-600 rounded-lg hover:bg-green-700"><Video className="w-4 h-4 md:w-5 md:h-5" /></button>
-          {isCalling && <button onClick={endCall} className="p-2 bg-red-600 rounded-lg hover:bg-red-700"><X className="w-4 h-4 md:w-5 md:h-5" /></button>}
+          <button 
+            onClick={startVideoCall} 
+            className="p-2 bg-green-600 rounded-lg hover:bg-green-700"
+            disabled={isCalling}
+          >
+            <Video className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+          {isCalling && (
+            <button onClick={endCall} className="p-2 bg-red-600 rounded-lg hover:bg-red-700">
+              <X className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Video Call Overlay */}
+      {/* ✅ FIXED: Video Call Overlay with proper ref assignments */}
       {isCalling && (
         <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
-          <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-black" onLoadedMetadata={(e) => e.target.play().catch(() => {})} />
-          <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 rounded-lg overflow-hidden border-2 border-white z-50">
-            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover bg-black" onLoadedMetadata={(e) => e.target.play().catch(() => {})} />
+          {/* Remote Video - Full Screen */}
+          <video 
+            ref={remoteVideoRef} 
+            autoPlay 
+            playsInline 
+            className="w-full h-full object-cover bg-black" 
+            onLoadedMetadata={(e) => {
+              console.log("📹 Remote video metadata loaded");
+              e.target.play().catch(err => console.warn("Remote video play warning:", err));
+            }}
+          />
+          
+          {/* ✅ FIXED: Local Video - Small Preview */}
+          <div className="absolute top-4 right-4 w-32 h-24 md:w-48 md:h-36 rounded-lg overflow-hidden border-2 border-white z-50 bg-black">
+            <video 
+              ref={localVideoRef} 
+              autoPlay 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover"
+              onLoadedMetadata={(e) => {
+                console.log("📹 Local video metadata loaded");
+                e.target.play().catch(err => console.warn("Local video play warning:", err));
+              }}
+              onCanPlay={() => console.log("✅ Local video can play")}
+              onError={(e) => console.error("❌ Local video error:", e)}
+            />
           </div>
-          <button onClick={endCall} className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white text-lg font-semibold hover:bg-red-700 transition">End Call</button>
+          
+          <button 
+            onClick={endCall} 
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 rounded-full text-white text-lg font-semibold hover:bg-red-700 transition"
+          >
+            End Call
+          </button>
         </div>
       )}
 
       {/* Incoming call popup */}
       {incomingCall && !isCalling && (
-        <div className="absolute inset-0 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-4 md:p-6 rounded-md shadow-lg text-center">
-            <p className="mb-3 text-sm md:text-base">Incoming call from {incomingCall.from}</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={acceptCall} className="px-3 py-1 md:px-4 md:py-2 bg-green-600 rounded">Accept</button>
-              <button onClick={declineCall} className="px-3 py-1 md:px-4 md:py-2 bg-red-600 rounded">Decline</button>
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black bg-opacity-70">
+          <div className="bg-gray-800 p-6 md:p-8 rounded-lg shadow-xl text-center border border-gray-600">
+            <div className="w-20 h-20 mx-auto mb-4 bg-gray-700 rounded-full flex items-center justify-center">
+              <Video className="w-10 h-10 text-green-500" />
+            </div>
+            <h3 className="text-lg md:text-xl font-semibold mb-2">Incoming Video Call</h3>
+            <p className="text-gray-300 mb-4">from {incomingCall.from}</p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                onClick={acceptCall} 
+                className="px-6 py-3 bg-green-600 rounded-full hover:bg-green-700 flex items-center gap-2"
+              >
+                <Video className="w-5 h-5" />
+                Accept
+              </button>
+              <button 
+                onClick={declineCall} 
+                className="px-6 py-3 bg-red-600 rounded-full hover:bg-red-700 flex items-center gap-2"
+              >
+                <X className="w-5 h-5" />
+                Decline
+              </button>
             </div>
           </div>
         </div>
