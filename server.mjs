@@ -36,7 +36,7 @@ app.use(cookieParser());
 
 
 app.use('/api/v1/',authApi)
-app.use("/uploads", express.static("uploads"));
+
 
 
 

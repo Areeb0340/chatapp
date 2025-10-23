@@ -536,12 +536,12 @@ const Chat = ({ id, groups, selectedGroup }) => {
         {conversations?.map((eachMessage, i) => {
           const isMine = eachMessage?.from?._id === state.user.user_id;
           return (
-            <div key={i} className={`flex w-full ${isMine ? "justify-end" : "justify-start"}`}>
-              <div className="relative w-full sm:max-w-md md:max-w-lg">
+            <div key={i} className={`flex w-[80%] ${isMine ? "justify-end" : "justify-start"}`}>
+              <div className="relative w-full sm:max-w-md md:max-w-md">
                 <div className={`p-2 md:p-3 rounded-2xl w-full ${isMine ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-700 text-gray-100 rounded-bl-none"}`}>
                   <p className="font-medium text-xs md:text-sm">{eachMessage?.from?.firstName} {eachMessage?.from?.lastName}</p>
                   {eachMessage?.text && <p className="mt-1 text-sm">{eachMessage?.text}</p>}
-                  {eachMessage?.voiceUrl && <audio controls className="mt-2 w-full" src={`${state.baseFileUrl}${eachMessage.voiceUrl}`} />}
+                  {eachMessage?.voiceUrl && <audio controls className="mt-2 w-full" src={eachMessage.voiceUrl}/>}
                   <span className="text-[10px] md:text-xs text-gray-300 block mt-1">{moment(eachMessage?.createdOn).fromNow()}</span>
                 </div>
 
